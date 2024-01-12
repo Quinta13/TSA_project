@@ -1,5 +1,9 @@
 # Clear preexisting environment
+Sys.setlocale("LC_TIME", "en_US.UTF-8")
 rm(list=ls())
+
+# Importing packages
+library(forecast)
 
 # Importing files
 source("./src/smoothing.R")
@@ -55,10 +59,6 @@ area.df <- split(
 names(region.df)
 names(area.df)
 
-# Set custom order
-names(area.df) <- names.area
-names(area.df)
-
 # 4. To daily time series
 
 region.ts.daily <- lapply(
@@ -71,8 +71,6 @@ area.ts.daily <- lapply(
   daily_df_to_daily_ts
 )
 
-names(area.ts.daily) <- names.area
-
 # To monthly
 
 region.ds.monthly <- lapply(
@@ -80,19 +78,16 @@ region.ds.monthly <- lapply(
   daily_df_to_monthly_ts
 )
 
-
 area.ts.monthly <- lapply(
   area.df,
   daily_df_to_monthly_ts
 )
 
-names(area.ts.monthly) <- names.area
-
 # 6. Daily Plot
 
 {
 par(mfrow = c(3, 3))
-for (i in seq_along(names(region.df))) {
+for (i in 1:length(region.ts.daily)) {
 
   region.name      <- names(region.ts.daily)[i]
   region.ts.daily_ <- region.ts.daily[[region.name]]
@@ -109,17 +104,14 @@ par(mfrow = c(1, 1))
 }
 
 {
-par(mfrow = c(3, 1))
-for (i in seq_along(names.area)) {
+par(mfrow = c(length(area.ts.daily), 1))
+for (area_name in names.area) {
 
-  area.name      <- names.area[i]
-  area.ts.daily_ <- area.ts.daily[[area.name]]
-  area.color     <- area.colors[i]
+  area.ts.daily_ <- area.ts.daily[[area_name]]
   
   plot(
     area.ts.daily_,
-    main = area.name,
-    col = area.color,
+    main = area_name,
     ylab="Daily violations"
   )
 }
@@ -134,16 +126,21 @@ date.anomaly = get_observation_over_threshold(
 
 date.anomaly
 
-# 1. Filtering to extract trend
+plot_multiple_time_series(
+  time_series_list=area.ts.daily,
+  colors=area.colors,
+  legends=names(area.ts.daily),
+  main="Violation in Chicago",
+  ylab="Daily violations"
+)
 
+# 1. Filtering to extract trend
 p        <- c(         60,           140,          230)
 p.colors <- c('lawngreen', 'deepskyblue', 'chocolate1')
 
-
-
 {
-par(mfrow = c(3, 1))
-for (area_name in names(area.ts.daily)) {
+par(mfrow = c(length(area.ts.daily), 1))
+for (area_name in names.area) {
   
   area.ts.daily_ <- area.ts.daily[[area_name]]
   
@@ -159,7 +156,7 @@ for (area_name in names(area.ts.daily)) {
 par(mfrow=c(1,1))}
 
 
-for (i in seq_along(names(area.ts.daily))) {
+for (i in 1:length(area.ts.daily)) {
   
   area         <- names.area[i]
   regions_area <- names.regions[[i]]
@@ -185,8 +182,8 @@ for (i in seq_along(names(area.ts.daily))) {
 ## Spencer
 
 {
-par(mfrow = c(3, 1))
-for (area_name in names(area.ts.daily)) {
+par(mfrow = c(length(area.ts.daily), 1))
+for (area_name in names.area) {
   
   area.ts.daily_ <- area.ts.daily[[area_name]]
   
@@ -201,7 +198,7 @@ for (area_name in names(area.ts.daily)) {
   lines(
     spencer.trend,
     lty='dashed', lwd=3,
-    col='chocolate1'
+    col='orangered'
   )
   
 }
@@ -209,32 +206,8 @@ par(mfrow=c(1,1))
 }
 
 {
-  par(mfrow = c(3, 1))
-  for (area_name in names(area.ts.monthly)) {
-    
-    area.ts.monthly_ <- area.ts.monthly[[area_name]]
-    
-    plot(
-      area.ts.monthly_,
-      main=paste(area_name, "- Spencer filter"),
-      ylab="Monthly violations"
-    )
-    
-    spencer.trend = spencer(ts=area.ts.monthly_)
-    
-    lines(
-      spencer.trend,
-      lty='dashed', lwd=3,
-      col='chocolate1'
-    )
-    
-  }
-  par(mfrow=c(1,1))
-}
-
-{
-  par(mfrow = c(3, 1))
-  for (area_name in names(area.ts.daily)) {
+  par(mfrow = c(length(area.ts.daily), 1))
+  for(area_name in names.area) {
     
     area.ts.daily_ <- area.ts.daily[[area_name]]
     
@@ -252,7 +225,7 @@ par(mfrow=c(1,1))
     lines(
       deseasonal.trend,
       lty='dashed', lwd=3,
-      col='chocolate1'
+      col='orangered'
     )
     
   }
@@ -260,8 +233,8 @@ par(mfrow=c(1,1))
 }
 
 {
-  par(mfrow = c(3, 1))
-  for (area_name in names(area.ts.daily)) {
+  par(mfrow = c(length(area.ts.daily), 1))
+  for(area_name in names.area) {
     
     area.ts.monthly_ <- area.ts.monthly[[area_name]]
     
@@ -279,7 +252,7 @@ par(mfrow=c(1,1))
     lines(
       deseasonal.trend,
       lty='dashed', lwd=3,
-      col='chocolate1'
+      col='orangered'
     )
     
   }
@@ -288,8 +261,8 @@ par(mfrow=c(1,1))
 
 
 {
-  par(mfrow = c(3, 1))
-  for (area_name in names(area.ts.monthly)) {
+  par(mfrow = c(length(area.ts.daily), 1))
+  for (area_name in names.area) {
     
     area.ts.monthly_ <- area.ts.monthly[[area_name]]
     
@@ -307,8 +280,8 @@ par(mfrow=c(1,1))
 # TSL Decomposition
 
 {
-  par(mfrow = c(3, 1))
-  for (area_name in names(area.ts.daily)) {
+  par(mfrow = c(length(area.ts.daily), 1))
+  for(area_name in names.area) {
     
     area.ts.daily_ <- area.ts.daily[[area_name]]
     
@@ -323,14 +296,14 @@ par(mfrow=c(1,1))
     lines(
       decomposition.trend,
       lty='dashed', lwd=3,
-      col='chocolate1'
+      col='orangered'
     )
     
   }
   par(mfrow=c(1,1))
 }
 
-for (area_name in names(area.ts.daily)) {
+for(area_name in names.area) {
   
   area.ts.daily_ <- area.ts.daily[[area_name]]
     
@@ -355,7 +328,7 @@ for (i in seq_along(names(area.ts.daily))) {
     
     plot_decomposition(
       decomposition=decomposition,
-      main=paste(region_name, "(", area_name, ")")
+      main=paste(region_name, " (", area_name, ")", sep="")
     )
   }
   
@@ -363,27 +336,10 @@ for (i in seq_along(names(area.ts.daily))) {
 
 # Components comparison
 
-for (i in seq_along(names(area.ts.daily))) {
-  
-  area_name <- names.area[i]
-  area_regions <- names.regions[[i]]
-  
-  for (region_name in area_regions) {
-    
-    region.ts.daily_ <- region.ts.daily[[region_name]]
-    
-    decomposition <- decompose(region.ts.daily_)
-    
-    plot_decomposition(
-      decomposition=decomposition,
-      main=paste(region_name, "(", area_name, ")")
-    )
-  }
-}
-
 # Magnitude
 plot_component_decompositions(
-  ts=area.ts.daily, 
+  ts_list = list(area.ts.daily$North, area.ts.daily$Center, area.ts.daily$South), 
+  names=names.area,
   component.name="x", 
   main=paste("Magnitude comparison"), 
   ylab="Daily violations"
@@ -391,7 +347,8 @@ plot_component_decompositions(
 
 # Trend
 plot_component_decompositions(
-  ts=area.ts.daily, 
+  ts_list = list(area.ts.daily$North, area.ts.daily$Center, area.ts.daily$South), 
+  names=names.area, 
   component.name="trend", 
   main=paste("Trend comparison"), 
   ylab="Daily violations"
@@ -399,7 +356,8 @@ plot_component_decompositions(
 
 # Seasonality
 plot_component_decompositions(
-  ts=area.ts.daily, 
+  ts_list = list(area.ts.daily$North, area.ts.daily$Center, area.ts.daily$South), 
+  names=names.area,
   component.name="seasonal", 
   main=paste("Seasonality comparison"), 
   ylab="Daily observations"
@@ -407,7 +365,8 @@ plot_component_decompositions(
 
 # Error
 plot_component_decompositions(
-  ts=area.ts.daily, 
+  ts_list = list(area.ts.daily$North, area.ts.daily$Center, area.ts.daily$South), 
+  names=names.area,
   component.name="random", 
   main=paste("Error comparison"), 
   ylab="Daily observations"
@@ -416,7 +375,7 @@ plot_component_decompositions(
 # Find worst predictions
 
 worst_predictions <- get_observation_over_threshold(
-  ts = decompose(area.ts.daily$Center)$random,
+  ts = decompose(area.ts.daily$North)$random,
   threshold = -300,
   upper=FALSE
 )
@@ -428,47 +387,48 @@ worst_predictions
 
 # 2. Dependency between weekdays
 
-{
-  par(mfrow = c(3, 1))
-  for (area_name in names(area.ts.daily)) {
+# Original ARIMA, ACF and PACF
+
+model <- auto.arima(area.ts.daily$Center)
+print(paste("Model", arimaorder(model)['p']))
+
+for(area_name in names.area) {
     
     area.ts.daily_ <- area.ts.daily[[area_name]]
     
-    acf(
-      area.ts.daily_,
-      main=paste(area_name, " - ACF"),
-      lag.max=365
+    # ARIMA
+    # order <- arimaorder(auto.arima(area.ts.daily_))
+    
+    tsdisplay(
+      area.ts.daily$Center,
+      main= paste(expression(Y[t]) ))
     )
     
+    
   }
-  par(mfrow=c(1,1))
+par(mfrow=c(1,1))
+
+
+
+
+for(area_name in names.area) {
+  
+  area.ts.daily_ <- area.ts.daily[[area_name]]
+  area.ts.daily_lagged7 <- diff(area.ts.daily_, 7)
+  
+  print(auto.arima(area.ts.daily_lagged7))
+  
 }
 
 { # Lagged 7
-  par(mfrow = c(3, 1))
-  for (area_name in names(area.ts.daily)) {
+  par(mfrow = c(length(area.ts.daily), 1))
+  for(area_name in names.area) {
     
     area.ts.daily_ <- area.ts.daily[[area_name]]
     area.ts.daily_lagged7 <- diff(area.ts.daily_, 7)
     
-    plot(
-      area.ts.daily_lagged7,
-      main=paste(area_name, " - Lagged 7"),
-    )
-    
-  }
-  par(mfrow=c(1,1))
-}
-
-{ # Lagged 7
-  par(mfrow = c(3, 1))
-  for (area_name in names(area.ts.daily)) {
-    
-    area.ts.daily_ <- area.ts.daily[[area_name]]
-    area.ts.daily_lagged7 <- diff(area.ts.daily_, 7)
-    
     acf(
-      area.ts.daily_lagged7,
+      as.numeric(area.ts.daily_lagged7),
       main=paste(area_name, " - Lagged 7 - ACF"),
     )
     
@@ -492,8 +452,181 @@ worst_predictions
   par(mfrow=c(1,1))
 }
 
-acf(
-  diff(area.ts.daily$Center, 7)
+
+region.ts.weekly <- lapply(
+  region.df, 
+  daily_df_to_weekly_ts_weekday_weekend
 )
+
+area.ts.weekly <- lapply(
+  area.df, 
+  daily_df_to_weekly_ts_weekday_weekend
+)
+
+
+
+{ # Plots
+  par(mfrow = c(2, length(area.ts.weekly)))
+  
+  # Weekdays
+  for(area_name in names.area) {
+    
+    area.ts.weekly_ <- area.ts.weekly[[area_name]]
+    
+    plot(
+      area.ts.weekly_$weekday,
+      main=paste(area_name, "- Weekday"),
+      ylab="Weekly violations"
+    )
+  }
+  
+  # Weekends
+  for(area_name in names.area) {
+    
+    area.ts.weekly_ <- area.ts.weekly[[area_name]]
+    
+    plot(
+      area.ts.weekly_$weekend,
+      main=paste(area_name, "- Weekend"),
+      ylab="Weekly violations"
+    )
+  }
+  
+  par(mfrow=c(1,1))
+}
+
+
+{ # Plots
+  par(mfrow = c(2, length(region.ts.weekly)))
+  
+  # Weekdays
+  for(region_name in unlist(names.regions)) {
+    
+    region.ts.weekly_ <- region.ts.weekly[[region_name]]
+    
+    plot(
+      region.ts.weekly_$weekday,
+      main=paste(region_name, "- Weekday"),
+      ylab="Weekly violations"
+    )
+  }
+  
+  # Weekends
+  for(region_name in unlist(names.regions)) {
+    
+    region.ts.weekly_ <- region.ts.weekly[[region_name]]
+    
+    plot(
+      region.ts.weekly_$weekend,
+      main=paste(region_name, "- Weekend"),
+      ylab="Weekly violations"
+    )
+  }
+  
+  par(mfrow=c(1,1))
+}
+
+## CCF
+{ # Lagged 7
+  par(mfrow = c(length(area.ts.weekly), 1))
+  for(area_name in names.area) {
+    
+    area.ts.weekly_ <- area.ts.weekly[[area_name]]
+    
+    ccf(
+      x=as.numeric(area.ts.weekly_$weekday),
+      y=as.numeric(area.ts.weekly_$weekday),
+      lag.max = 104,
+      main=paste(area_name ,"- Cross Correlogram"),
+      ylab="CCF"
+    )
+    
+  }
+  par(mfrow=c(1,1))
+}
+
+# # ARIMA
+# { # Lagged 7
+#   par(mfrow = c(length(area.ts.weekly), 1))
+#   for(area_name in names.area) {
+#     
+#     area.ts.weekly_ <- area.ts.weekly[[area_name]]
+#     
+#     print(area_name)
+#     print("Weekday: ")
+#     print(auto.arima(area.ts.weekly_$weekday)$coef)
+#     print("Weekend: ")
+#     print(auto.arima(area.ts.weekly_$weekday)$coef)
+#     
+#   }
+#   par(mfrow=c(1,1))
+# }
+
+weekday.violations <- as.numeric(area.ts.weekly$Center$weekday)
+weekend.violations  <- as.numeric(area.ts.weekly$Center$weekend)
+
+## Relation
+plot(
+  x=weekday.violations,
+  y=weekend.violations,
+  pch=16, col="steelblue",
+  main="Weekdays VS Weekend violations",
+  xlab="Weekly violations on weekdays",
+  ylab="Weekly violations on weekdays",
+)
+grid()
+
+# Linear regression
+fit <- lm(weekend.violations ~ weekday.violations)
+abline(fit,  col = "orangered", lwd = 3, lty="dashed")
+checkresiduals(fit)
+AIC(fit)
+
+# Using ARIMA
+fit1 <- auto.arima(area.ts.weekly$Center$weekend, xreg=area.ts.weekly$Center$weekday)
+summary(fit1)
+
+checkresiduals(fit1)
+AIC(fit1)
+
+# DETERMINISTIC  TREND
+
+# First model, use index as predictor
+fit_deterministic <- auto.arima(
+  area.ts.weekly$Center$weekend,
+  xreg=1:length(area.ts.weekly$Center$weekend) # also provide predictor
+)
+summary(fit_deterministic) # Error Term AR(2)
+checkresiduals(fit_deterministic)
+AIC(fit_deterministic)
+
+fit_stochastic <- auto.arima(
+  area.ts.weekly$Center$weekend
+)
+checkresiduals(fit_deterministic)
+AIC(fit_deterministic)
+
+# Best according to AIC
+fit_deterministic$aicc
+fit_stochastic$aicc
+
+# We prefer the first case
+fc_deterministic <- forecast(
+  fit_deterministic, 
+  h = 10,
+  xreg = (max(xreg)+1:10) # also provide further value for predictors
+)
+fc_stochastic <- forecast(
+  fit_stochastic,
+  h = 10
+)
+
+# Same prediction, but the deterministic has narrow variance
+par(mfrow=c(2,1))
+plot(fc_deterministic,fcol=2,main="Forecasts from deterministic trend ",ylim=c(0,10))
+plot(fc_stochastic,fcol=4, main="Forecasts from stochastic trend ",ylim=c(0,10))
+
+
+
 
 

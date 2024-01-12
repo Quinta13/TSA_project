@@ -1,34 +1,42 @@
-# Project file paths
-VIOLATIONS_FILE = "./out/violations.csv"
+# File: globals.R
+# Author: Sebastiano Quintavalle
+# Date: 2024-01-26
+# Description: This file contains global variables for project configuration and data.
+
+# File paths (local path referred to the project root)
+violation_file <- "./out/violations.csv"
 
 # Frequencies
-daily.freq   <- 365.25         # 0.25 to cope with the leap-year
-weekly.freq  <- 52             # Mean number of weak per year
-monthly.freq <- 12
+daily.freq   <- 365.25  # Daily   frequency (considering leap years)
+weekly.freq  <- 52      # Weekly  frequency
+monthly.freq <- 12      # Monthly frequency
 
-# Names
+# Names of the three Chicago areas
+names.area    <- c("North", "Center", "South")
 
-names.area   <- c("North", "Center", "South")
-names.center <- c('Central'     , 'West'        , 'SouthWest', 'South')
-names.north  <- c('FarNorth'    , 'NorthWest'   , 'North'    )
-names.south  <- c('FarSouthWest', 'FarSouthEast')
-names.regions <- list(names.north, names.center, names.south)
+# Names of the nine Chicago regions divided per area
+names.regions <- list(
+  North  = c('FarNorth', 'NorthWest', 'North'),
+  Center = c('Central', 'West', 'SouthWest', 'South'),
+  South  = c('FarSouthWest', 'FarSouthEast')
+)
 
-# Colors
-region.colors <- c(
-  "#bc80b8", # Center; 
-  "#f7a9a0", # Far North;
-  "#facee1", # Far Southeast;
-  "#d9bc73", # Far Southwest;
-  "#b4d56b", # North Side;
-  "#bdbada", # Northeast;
-  "#d9d9c0", # South;
-  "#d7eff7", # Southwest;
-  "#fbb462"  # West
-)    
-
+# Area colors
 area.colors <- c(
-  "#2980B9", # Center
   "#58D68D", # North
+  "#2980B9", # Center
   "#EB984E"  # South
 )
+
+# Region colors
+region.colors <- c(
+  "#f7a9a0", # FarNorth
+  "#bdbada", # NorthWest
+  "#b4d56b", # North
+  "#bc80b8", # Center
+  "#fbb462", # West
+  "#d7eff7", # SouthWest
+  "#d9d9c0", # South
+  "#d9bc73", # Far SouthWest
+  "#facee1"  # Far SouthEast
+)    
