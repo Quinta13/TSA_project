@@ -1,13 +1,13 @@
 # Clear preexisting environment
-Sys.setlocale("LC_TIME", "en_US.UTF-8")
-rm(list=ls())
+
 
 # Importing packages
 library(forecast)
 
 # Importing files
-source("./src/smoothing.R")
+source("./src/differencing.R")
 source("./src/globals.R")
+source("./src/smoothing.R")
 source("./src/utils.R")
 
 # 1. Reading File
@@ -85,38 +85,6 @@ area.ts.monthly <- lapply(
 
 # 6. Daily Plot
 
-{
-par(mfrow = c(3, 3))
-for (i in 1:length(region.ts.daily)) {
-
-  region.name      <- names(region.ts.daily)[i]
-  region.ts.daily_ <- region.ts.daily[[region.name]]
-  region.color     <- region.colors[i]
-  
-  plot(
-    region.ts.daily_,
-    main=region.name,
-    col=region.color,
-    ylab="Daily violations"
-  )
-}
-par(mfrow = c(1, 1))
-}
-
-{
-par(mfrow = c(length(area.ts.daily), 1))
-for (area_name in names.area) {
-
-  area.ts.daily_ <- area.ts.daily[[area_name]]
-  
-  plot(
-    area.ts.daily_,
-    main = area_name,
-    ylab="Daily violations"
-  )
-}
-par(mfrow = c(1, 1))
-}
 
 # Find indices where values exceed 1500
 date.anomaly = get_observation_over_threshold(

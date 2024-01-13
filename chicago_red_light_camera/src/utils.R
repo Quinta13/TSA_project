@@ -24,8 +24,8 @@ daily_df_to_daily_ts <- function(df) {
   # Creating time series object
   daily.ts <- ts(
     df$Violations, 
-    start = c(start.year, start.day), 
-    frequency = daily.freq
+    start=c(start.year, start.day), 
+    frequency=daily.freq
   )
   
   return(daily.ts)
@@ -55,8 +55,8 @@ daily_df_to_monthly_ts <- function(df) {
   # Creating monthly time series
   monthly.ts <- ts(
     monthly.df$Violations, 
-    start = c(start.year, start.month), 
-    frequency = monthly.freq
+    start=c(start.year, start.month), 
+    frequency=monthly.freq
   )
   
   return(monthly.ts)
@@ -90,7 +90,7 @@ daily_df_to_weekly_ts_weekday_weekend <- function(df) {
   df$Weekday <- ifelse(df$WeekdayName %in% names.weekday, "Weekday",
                 ifelse(df$WeekdayName %in% names.weekend, "Weekend", NA))
   
-  # Dropping first and last week
+  # Dropping first and last week that doesn't cover the all keep
   df <- subset(df, !(WeekNumber %in% c(0, 53)))
   
   # Aggregating data by Weekday, WeekNumber, and Year
@@ -106,15 +106,17 @@ daily_df_to_weekly_ts_weekday_weekend <- function(df) {
   
   # Creating time series objects for weekday and weekend
   weekly.ts = list(
+    # Weekday
     weekday = ts(
       weekly.df.weekday$Violations, 
-      start = c(start.year, start.week), 
-      frequency = weekly.freq - 1
+      start=c(start.year, start.week), 
+      frequency=weekly.freq
     ),
+    # Weekend
     weekend = ts(
       weekly.df.weekend$Violations, 
-      start = c(start.year, start.week), 
-      frequency = weekly.freq - 1
+      start=c(start.year, start.week), 
+      frequency=weekly.freq
     )
   )
   
@@ -194,7 +196,7 @@ float_to_date <- function(date_float) {
 #' @param main Main title for the plot.
 #' @return NULL
 #'
-plot_decomposition <- function(ts, main) {
+plot_ma_decomposition <- function(ts, main) {
   
   # Decompose the time series
   decomposition <- decompose(ts)
@@ -212,10 +214,28 @@ plot_decomposition <- function(ts, main) {
     trends, 
     main = main
   )
+  # Return NULL as the result is a plot
+  return(NULL)
+}
+
+plot_stl_decomposition <- function(ts, main) {
   
-  # Note: If you want to customize the plot further, you can do so by adding 
-  # additional plot-related functions or parameters here.
+  # Decompose the time series
+  decomposition <- stl(ts, s.window="periodic")
+  decomposition.ts <- decomposition$time.series
   
+  # Combine components for plotting
+  trends <- cbind(
+    trend    = decomposition.ts[, "trend"    ], 
+    seasonal = decomposition.ts[, "seasonal" ], 
+    random   = decomposition.ts[, "remainder"]
+  )
+  
+  # Plot the decomposition
+  plot(
+    trends, 
+    main=main
+  )
   # Return NULL as the result is a plot
   return(NULL)
 }
@@ -233,29 +253,31 @@ plot_decomposition <- function(ts, main) {
 #' @param ylab Label for the y-axis.
 #' @return NULL
 #'
-plot_multiple_time_series <- function(time_series_list, colors, legends, main, ylab) {
+plot_multiple_time_series <- function(ts_list, colors, legends, main, ylab) {
  
   # Get the number of time series
-  num_series <- length(time_series_list)
+  num_series <- length(ts_list)
+  
+  first_name = names(ts_list)[1]
   
   # Plot the first time series
   plot(
-    time_series_list[[1]],
-    ylim = range(unlist(time_series_list)),
-    type = "l", col = colors[1],
-    main = main, xlab = "Year", ylab = ylab
+    ts_list[[first_name]],
+    ylim=range(unlist(ts_list)),
+    type="l", col=colors[[first_name]],
+    main=main, xlab="Year", ylab=ylab
   )
   
   # Add the remaining time series to the plot
   for (i in 2:num_series) {
-    lines(time_series_list[[i]], type = "l", col = colors[i])
+    i_name = names(ts_list)[i]
+    lines(ts_list[[i_name]], type="l", col=colors[[i_name]])
   }
   
   # Add legend
   legend("topright",
-         legend = legends,
-         lty = 1,
-         col = colors)
+         legend=legends,
+         lty=1, col=unlist(colors))
   
   # Return NULL as the result is a plot, and it's typically not assigned to a variable.
   return(NULL)

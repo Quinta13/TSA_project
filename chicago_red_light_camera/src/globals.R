@@ -22,21 +22,22 @@ names.regions <- list(
 )
 
 # Area colors
-area.colors <- c(
-  "#58D68D", # North
-  "#2980B9", # Center
-  "#EB984E"  # South
+area.colors <- list(
+  North  = "#58D68D",
+  Center = "#EB984E",
+  South  = "#2980B9" 
 )
 
 # Region colors
-region.colors <- c(
-  "#f7a9a0", # FarNorth
-  "#bdbada", # NorthWest
-  "#b4d56b", # North
-  "#bc80b8", # Center
-  "#fbb462", # West
-  "#d7eff7", # SouthWest
-  "#d9d9c0", # South
-  "#d9bc73", # Far SouthWest
-  "#facee1"  # Far SouthEast
-)    
+region.colors <- list(
+  FarNorth     = "#f7a9a0",
+  NorthWest    = "#bdbada",
+  North        = "#b4d56b",
+  Central      = "#bc80b8",
+  West         = "#fbb462",
+  SouthWest    = "#d7eff7",
+  South        = "#d9d9c0",
+  FarSouthWest = "#d9bc73",
+  FarSouthEast = "#facee1"
+)
+

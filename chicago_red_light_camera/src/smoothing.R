@@ -16,9 +16,9 @@ smoothing_filter <- function(ts, weights) {
   
   # Apply the smoothing filter using the specified weights
   ts_filtered <- filter(
-    x = ts,
-    sides = 2,
-    filter = weights
+    x=ts,
+    sides=2,
+    filter=weights
   )
   
   return(ts_filtered)
@@ -41,7 +41,7 @@ simple_moving_average <- function(ts, p) {
   ma.weights <- rep(1 / (2 * p + 1), 2 * p + 1)
   
   # Applying the smoothing filter to calculate the moving average
-  ma.filter <- smoothing_filter(ts, ma.weights)
+  ma.filter <- smoothing_filter(ts=ts, weights=ma.weights)
   
   return(ma.filter)
   
@@ -65,25 +65,79 @@ simple_moving_average_varying_p <- function(ts, p, p.color, main, ylab) {
   # Plot the original time series
   plot(
     ts,
-    main = main,
-    ylab = ylab
+    main=main,
+    ylab=ylab
   )
   
   # Overlay simple moving averages with varying window sizes
   for (i in seq_along(p)) {
     lines(
       simple_moving_average(ts, p[i]),
-      lwd = 3, lty = 'dashed',
-      col = p.color[i]
+      lwd=3, lty='dashed',
+      col=p.color[i]
     )
   }
   
   # Add legend
   legend(
     "topleft", 
-    legend = paste("p =", p),
-    lwd = 2, lty = 1, 
-    col = p.color
+    legend=paste("p =", p),
+    lwd=2, lty=1, col=p.color
+  )
+  
+  # Return NULL as the result is a plot, and it's typically not assigned to a variable.
+  return(NULL)
+}
+
+
+binomial <- function(ts, p) {
+  
+  # Generating pascal triangle
+  triangle <- matrix(0, nrow = p, ncol = p)
+  
+  # Fill the triangle
+  for (i in 1:p) {
+    for (j in 1:i) {
+      if (j == 1 || j == i) {
+        triangle[i, j] <- 1
+      } else {
+        triangle[i, j] <- triangle[i - 1, j - 1] + triangle[i - 1, j]
+      }
+    }
+  }
+  
+  binomial.weights = triangle[p, ] / 2^(p-1)
+  
+  # Applying the smoothing filter to calculate the moving average
+  binomial.filter <- smoothing_filter(ts=ts, weights=binomial.weights)
+  
+  return(binomial.filter)
+  
+}
+
+binomial_varying_p <- function(ts, p, p.color, main, ylab) {
+  
+  # Plot the original time series
+  plot(
+    ts,
+    main=main,
+    ylab=ylab
+  )
+  
+  # Overlay simple moving averages with varying window sizes
+  for (i in seq_along(p)) {
+    lines(
+      binomial(ts, p[i]),
+      lwd=3, lty='dashed',
+      col=p.color[i]
+    )
+  }
+  
+  # Add legend
+  legend(
+    "topleft", 
+    legend=paste("p =", p),
+    lwd=2, lty=1, col=p.color
   )
   
   # Return NULL as the result is a plot, and it's typically not assigned to a variable.
@@ -106,7 +160,7 @@ spencer <- function(ts) {
   spencer.weights <- spencer.weights / sum(spencer.weights) 
   
   # Apply the Spencer filter using the specified weights
-  spencer.filter <- smoothing_filter(ts, spencer.weights)
+  spencer.filter <- smoothing_filter(ts=ts, weights=spencer.weights)
   
   return(spencer.filter)
   
@@ -128,7 +182,7 @@ deseasoning <- function(ts, freq) {
   deseasoning.weights <- deseasoning.weights / sum(deseasoning.weights)
   
   # Apply the deseasoning filter using the specified weights
-  deseasoning.filter <- smoothing_filter(ts, deseasoning.weights)
+  deseasoning.filter <- smoothing_filter(ts=ts, weights=deseasoning.weights)
   
   return(deseasoning.filter)
   
@@ -142,21 +196,22 @@ deseasoning <- function(ts, freq) {
 #'
 #' @param ts_list A list of time series objects.
 #' @param names Names for each time series, displayed as plot titles.
-#' @param component.name Name of the component to be decomposed and plotted (e.g., "trend", "seasonal").
+#' @param component_name Name of the component to be decomposed and plotted (e.g., "trend", "seasonal").
 #' @param main Main title for the entire plot.
 #' @param ylab Label for the y-axis.
 #' @return NULL
 #'
-plot_component_decompositions <- function(ts_list, names, component.name, main, ylab) {
+plot_stl_components <- function(ts_list, names, component_name, main, ylab) {
   
   # Set up multiple plots in a single column
-  par(mfrow = c(length(ts_list), 1))
+  par(mfrow = c(length(ts_list), 1), oma=c(0,0,2,0))
   
   # Loop through each time series and decompose the specified component
   for (i in 1:length(ts_list)) {
     
     # Decompose the specified component
-    component <- decompose(ts_list[[i]])[[component.name]]
+    decomposition <- stl(ts_list[[i]], s.window="periodic")
+    component     <- decomposition$time.series[, component_name]
     
     # Plot the component
     plot(
@@ -168,10 +223,10 @@ plot_component_decompositions <- function(ts_list, names, component.name, main, 
   }
   
   # Add a main title for the entire plot
-  mtext(main, line = 0, side = 3, outer = TRUE, cex = 2)
+  mtext(main, side = 3, line = - 2, padj=-1, outer=TRUE)
   
   # Reset the plotting layout
-  par(mfrow = c(1, 1))
+  par(mfrow = c(1, 1), oma=c(0,0,0,0))
   
   # Return NULL as the result is a plot, and it's typically not assigned to a variable.
   return(NULL)
