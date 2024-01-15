@@ -189,46 +189,5 @@ deseasoning <- function(ts, freq) {
 }
 
 
-#' Plot decompositions of a specific component for multiple time series.
-#'
-#' This function plots the decomposition of a specific component (e.g., trend, seasonal, etc.)
-#' for each time series in a list.
-#'
-#' @param ts_list A list of time series objects.
-#' @param names Names for each time series, displayed as plot titles.
-#' @param component_name Name of the component to be decomposed and plotted (e.g., "trend", "seasonal").
-#' @param main Main title for the entire plot.
-#' @param ylab Label for the y-axis.
-#' @return NULL
-#'
-plot_stl_components <- function(ts_list, names, component_name, main, ylab) {
-  
-  # Set up multiple plots in a single column
-  par(mfrow = c(length(ts_list), 1), oma=c(0,0,2,0))
-  
-  # Loop through each time series and decompose the specified component
-  for (i in 1:length(ts_list)) {
-    
-    # Decompose the specified component
-    decomposition <- stl(ts_list[[i]], s.window="periodic")
-    component     <- decomposition$time.series[, component_name]
-    
-    # Plot the component
-    plot(
-      component,
-      main = names[i],
-      ylab = ylab
-    )
-    
-  }
-  
-  # Add a main title for the entire plot
-  mtext(main, side = 3, line = - 2, padj=-1, outer=TRUE)
-  
-  # Reset the plotting layout
-  par(mfrow = c(1, 1), oma=c(0,0,0,0))
-  
-  # Return NULL as the result is a plot, and it's typically not assigned to a variable.
-  return(NULL)
-}
+
 

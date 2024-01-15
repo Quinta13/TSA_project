@@ -21,6 +21,11 @@ names.regions <- list(
   South  = c('FarSouthWest', 'FarSouthEast')
 )
 
+# Name of weekdays for weekly analysis
+names.weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
+                    "Saturday", "Sunday")
+
+
 # Area colors
 area.colors <- list(
   North  = "#58D68D",

@@ -11,8 +11,8 @@ editor_options: null
 chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.width=6, fig.height=8)
+```{r outout setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width=12, fig.height=8)
 ```
 
 # 1. Data preparation and setup
@@ -22,24 +22,25 @@ knitr::opts_chunk$set(echo = TRUE, fig.width=6, fig.height=8)
 The initial operations involve **clearing the existing environment** to prevent potential conflicts and setting the **system language**.
 
 
-```{r}
+```{r environment setup}
 Sys.setlocale("LC_TIME", "en_US.UTF-8")
 rm(list=ls())
-dev.off()
+# dev.off()
 ```
 
 Loading the necessary **packages** for the project.
 
-```{r}
+```{r packages}
 library(forecast)
 ```
 
 Importing **custom variables** and **functions** from local files.
 
-```{r}
-source("./src/smoothing.R")
+```{r source files}
 source("./src/globals.R")
-source("./src/utils.R")
+source("./src/plotting.R")
+source("./src/smoothing.R")
+source("./src/time.R")
 ```
 
 ## Data preparation
@@ -48,7 +49,7 @@ source("./src/utils.R")
 
 Reading the [`violations.csv`](out/violations.csv) file, containing preprocessed **daily traffic light violation** data from the [Chicago Data Portal](https://data.cityofchicago.org/Transportation/Red-Light-Camera-Violations/spqx-js37/data_preview).
 
-```{r}
+```{r reading file}
 # Reading the file
 violations.regions.df <- read.csv(file=violation_file)
 
@@ -76,7 +77,7 @@ The dataset encompasses observations for **nine distinct regions** within Chicag
 
 ![Seasonal Variation](./out/chicago_sides_and_areas.png){width=60%}
 
-```{r}
+```{r area definition}
 
 # Names of the nine regions
 levels(violations.regions.df$Region)
@@ -111,7 +112,7 @@ summary(violations.areas.df)
 
 We utilize the labels associated with each region and area to **partition the dataset into a list** of datasets, with each one linked to a specific region or area.
 
-```{r}
+```{r dataframe split}
 # List of regions
 region.df <- split(
   violations.regions.df,
@@ -133,7 +134,7 @@ names(area.df)
 
 We employ custom functions to transform the dataset into both **daily** and **monthly formats**. The monthly format involves aggregating the total number of violations within each month, revealing essential insights for seasonality analysis.
 
-```{r}
+```{r time series creation}
 # To daily
 region.ts.daily <- lapply(
   region.df, 
@@ -146,7 +147,7 @@ area.ts.daily <- lapply(
 )
 
 # To monthly
-region.ds.monthly <- lapply(
+region.ts.monthly <- lapply(
   region.df, 
   daily_df_to_monthly_ts
 )
@@ -154,6 +155,17 @@ region.ds.monthly <- lapply(
 area.ts.monthly <- lapply(
   area.df,
   daily_df_to_monthly_ts
+)
+
+# To weekly
+region.ts.weekly <- lapply(
+  region.df, 
+  daily_df_to_weekly_ts
+)
+
+area.ts.weekly <- lapply(
+  area.df,
+  daily_df_to_weekly_ts
 )
 ```
 
@@ -163,7 +175,7 @@ area.ts.monthly <- lapply(
 
 We plot the daily violations of the nine regions.
 
-```{r}
+```{r regions ts plot}
 
 par(mfrow = c(length(region.ts.daily) %/% 3, 3))
 
@@ -187,7 +199,7 @@ par(mfrow = c(1, 1))
 
 We plot the daily violations of the three areas.
 
-```{r}
+```{r areas ts plot}
 
 par(mfrow = c(length(names.area), 1))
 
@@ -209,7 +221,7 @@ par(mfrow = c(1, 1))
 
 We plot them in the same graph to compare magnitudes.
 
-```{r}
+```{r area ts single plot}
 plot_multiple_time_series(
   ts_list=area.ts.daily,
   colors=area.colors,
@@ -223,7 +235,7 @@ plot_multiple_time_series(
 
 The plot exhibits **evidence of an outlier point**, contributing to a peak in violations in the Center and South areas, as well as a significant drop in the North area.
 
-```{r}
+```{r anomaly date}
 get_observation_over_threshold(
   ts=area.ts.daily$Center,
   threshold = 1500
@@ -235,11 +247,11 @@ The data corresponds to `May 30, 2020`, a date notable for the Black Lives Matte
 
 # 2. Trend and Seasonality decomposition
 
-### Extracting trend with smoothing and Low-pass filters
+## Smoothing and Low-pass filtering
 
 We are interested in understanding if data is regulated by a a generic trend, for this reason we apply examples of low-pass filters to revels such structure.
 
-#### Simple moving average filter
+### Simple moving average filter
 
 The filter computes an arithmetic average within a time window $p$.
 
@@ -249,7 +261,7 @@ $$
 
 The value of $p$ plays a significant role in determining the importance of smoothing.
 
-```{r}
+```{r simple moving average filter}
 # Using different values of p
 p        <- c(         60,           120,          183)
 p.colors <- c('lawngreen', 'deepskyblue', 'chocolate1')
@@ -273,17 +285,17 @@ par(mfrow=c(1,1))
 ```
 
 
-#### Binomial filter
+### Binomial filter
 
 The filter computes an weighted average within a time window $p$ using Newton binomial coefficients as weights.
 
 $$
-\hat{f}_t = \frac{1}{2^{p-1}} \sum_{i=0}^p {p \choose j} y_{t-\lceil p/2\rceil + j}
+\hat{f}_t = \frac{1}{2^{p-1}} \sum_{i=0}^p {p \choose i} y_{t-\lceil p/2\rceil + j}
 $$
 
 
 
-```{r}
+```{r binomial filter}
 # Uncomment to set value and colors different from previous ones
 # p        <- c(         60,           120,          183)
 # p.colors <- c('lawngreen', 'deepskyblue', 'chocolate1')
@@ -307,80 +319,16 @@ for (area_name in names.area) {
 par(mfrow=c(1,1))
 ```
 
-#### Spencer
-
-Spencer's $15$-point filter is a symmetric moving average invariant to linear, quadratic and cubic polynomials.
-
-$$
-\begin{aligned}
-i:\quad  &0& &\pm 1& &\pm 2& &\pm 3& &\pm 4& &\pm 5& &\pm 6& &\pm 7& \\
-a_i^*:\quad  &74& &\pm 67& &\pm 46& &\pm 21& &\pm 3& &\pm -5& &\pm -6& &\pm -3&
-\end{aligned}
-$$
-```{r}
-par(mfrow = c(length(area.ts.daily), 1))
-
-for (area_name in names.area) {
-  
-  daily <- area.ts.daily[[area_name]]
-  
-  plot(
-    daily,
-    main=paste(area_name, "- Spencer filter"),
-    ylab="Daily violations"
-  )
-  
-  spencer.trend = spencer(ts=daily)
-  
-  lines(
-    spencer.trend,
-    lty='dashed', lwd=3,
-    col='orangered'
-  )
-  
-}
-
-par(mfrow=c(1,1))
-```
-
-Let's use monthly
-
-```{r}
-par(mfrow = c(length(area.ts.monthly), 1))
-
-for (area_name in names.area) {
-  
-  monthly <- area.ts.monthly[[area_name]]
-  
-  plot(
-    monthly,
-    main=paste(area_name, "- Spencer filter"),
-    ylab="Monthly violations"
-  )
-  
-  spencer.trend = spencer(ts=monthly)
-  
-  lines(
-    spencer.trend,
-    lty='dashed', lwd=3,
-    col='orangered'
-  )
-  
-}
-
-par(mfrow=c(1,1))
-```
-
-#### Deseasoning filter
+### Deseasoning filter
 
 We can highlight trend by removing seasonality effect, this can be achieved with a filter that average among two consecutive time windows considering a period $p$.
 
 $$
-\hat{f}_t = \frac{0.5\ y_{t-p} + y_{t-p+1}+ \ldots + y_0 + \ldots + y_{t+p-1} + 0.5\ y_{t+p}}
+\hat{f}_t = \frac{0.5\ y_{t-p} + y_{t-p+1}+ \ldots + y_0 + \ldots + y_{t+p-1} + 0.5\ y_{t+p}}{p}
 $$
 We first look at weekly deseasoning of daily data.
 
-```{r}
+```{r weekly deseasoning}
 par(mfrow = c(length(area.ts.daily), 1))
 
 for(area_name in names.area) {
@@ -411,7 +359,7 @@ par(mfrow=c(1,1))
 
 We also take a look to yearly deseasoning of daily data.
 
-```{r}
+```{r yearly deseasoning}
 par(mfrow = c(length(area.ts.daily), 1))
 
 for(area_name in names.area) {
@@ -442,8 +390,8 @@ par(mfrow=c(1,1))
 
 Which by construction we expect to look quite similar to the yearly deseasoning of monthly data.
 
-```{r}
-par(mfrow = c(length(area.ts.daily), 1))
+```{r yearly deseasoning monthly}
+par(mfrow = c(length(area.ts.monthly), 1))
 
 for(area_name in names.area) {
   
@@ -451,7 +399,7 @@ for(area_name in names.area) {
   
   plot(
     monthly,
-    main=paste(area_name, "- Yearly Deseasoning"),
+    main=paste(area_name, "- Monthly Deseasoning"),
     ylab="Monthly violations"
   )
   
@@ -471,11 +419,40 @@ for(area_name in names.area) {
 par(mfrow=c(1,1))
 ```
 
-#### Monthplot
+```{r yearly deseasoning weekly}
+par(mfrow = c(length(area.ts.weekly), 1))
+
+for(area_name in names.area) {
+  
+  weekly <- area.ts.weekly[[area_name]]
+  
+  plot(
+    weekly,
+    main=paste(area_name, "- Weekly Deseasoning"),
+    ylab="Weekly violations"
+  )
+  
+  deseasonal.trend = deseasoning(
+    ts=weekly, 
+    weekly.freq - 2
+  )
+  
+  lines(
+    deseasonal.trend,
+    lty='dashed', lwd=3,
+    col='steelblue1'
+  )
+  
+}
+
+par(mfrow=c(1,1))
+```
+
+### Monthplot
 
 monthplots shows evidence of importance of seasonality but also a recurrent trends.
 
-```{r}
+```{r monthplot}
 par(mfrow = c(length(area.ts.monthly), 1))
 
 for (area_name in names.area) {
@@ -494,18 +471,18 @@ par(mfrow=c(1,1))
 ```
 
 
-#### Moving Average Decomposition
+### Moving Average Decomposition
 
 We better inspect the role of trend and seasonality by exploiting Moving Average Decomposition.
 
-```{r}
+```{r ma decomposition}
 for(area_name in names.area) {
   
   daily <- area.ts.daily[[area_name]]
   
   plot_ma_decomposition(
     ts=daily,
-    main=area_name
+    main=paste(area_name, "- MA Decomposition")
   )
 }
 ```
@@ -518,7 +495,7 @@ In terms of explainability the trend
 Let's see the trend 
 
 
-```{r}
+```{r ma decomposition trend}
 
 par(mfrow = c(length(area.ts.daily), 1))
 
@@ -537,7 +514,7 @@ for(area_name in names.area) {
   lines(
     trend,
     lty='dashed', lwd=3,
-    col='forestgreen'
+    col='springgreen'
   )
   
 }
@@ -546,33 +523,57 @@ par(mfrow=c(1,1))
 ```
 
 
-### STL
+## STL Decomposition
 
 The statistical trend decomposition using Loess is a really powe
 
-```{r}
+```{r stl decomposition}
 for(area_name in names.area) {
   
   daily <- area.ts.daily[[area_name]]
   
   plot_stl_decomposition(
     ts=daily,
-    main=area_name
+    main=paste(area_name, "- Daily STL Decomposition - Freq 365")
   )
 }
 ```
+
+Let's also consider monthly decomposition
+
+```{r stl decomposition monthly}
+for(area_name in names.area) {
+  
+  monthly <- area.ts.monthly[[area_name]]
+  
+  plot_stl_decomposition(
+    ts=monthly,
+    freq=12,
+    main=paste(area_name, "Monthly STL Decomposition")
+  )
+}
+```
+
+```{r stl decomposition weekly}
+for(area_name in names.area) {
+  
+  weekly <- area.ts.weekly[[area_name]]
+  
+  plot_stl_decomposition(
+    ts=weekly,
+    main=paste(area_name, "Weekly STL Decomposition")
+  )
+}
+```
+
 
 Let's compare individual components of the three
 
 Trend
 
-```{r}
+```{r stl decomposition trend}
 plot_stl_components(
-  ts_list = list(
-    area.ts.daily$North,
-    area.ts.daily$Center,
-    area.ts.daily$South
-  ), 
+  ts_list = area.ts.daily,
   names=names.area,
   component_name="trend", 
   main=paste("Trend comparison of Chicago areas"), 
@@ -582,13 +583,9 @@ plot_stl_components(
 
 Seasonal
 
-```{r}
+```{r stl decomposition season}
 plot_stl_components(
-  ts_list = list(
-    area.ts.daily$North,
-    area.ts.daily$Center,
-    area.ts.daily$South
-  ), 
+  ts_list = area.ts.daily,
   names=names.area,
   component_name="seasonal", 
   main=paste("Seasonal decomposition comparison of Chicago areas"), 
@@ -598,13 +595,9 @@ plot_stl_components(
 
 Error
 
-```{r}
+```{r stl decomposition errors}
 plot_stl_components(
-  ts_list = list(
-    area.ts.daily$North,
-    area.ts.daily$Center,
-    area.ts.daily$South
-  ), 
+  ts_list = area.ts.daily,
   names=names.area,
   component_name="remainder", 
   main=paste("Error decomposition comparison of Chicago areas"), 
@@ -618,16 +611,7 @@ Previous results important monthly seasonality, what about weekly.
 
 Let's first see ACF and PACF of some differencing ts
 
-```{r}
-
-
-
-
-```
-
-Important spikes at lag 7, importance of weekdays. Data it's not stationary so we cannot give real intepretation to the ACF and PACF in terms of ARIMA models.
-
-```{r}
+```{r ts display}
 for(area_name in names.area) {
     
   daily <- area.ts.daily[[area_name]]
@@ -639,54 +623,288 @@ for(area_name in names.area) {
 }
 ```
 
-Let's better inspect the ACF and PACF of the 3 areas
-
-```{r}
-par(mfrow=c(2, length(area.ts.daily)))
-
-for(area_name in names.area) {
-    
-  daily <- area.ts.daily[[area_name]]
-  
-  diff1 <- diff(daily, 1) 
-  
-  acf(
-    as.numeric(diff1),
-    main=paste(area_name, "- First order differencing Red Light Violations - ACF"),
-    lag.max=100
-  )
-}
-
-for(area_name in names.area) {
-    
-  daily <- area.ts.daily[[area_name]]
-  
-  diff1 <- diff(daily, 1) 
-  
-  pacf(
-    as.numeric(diff1),
-    main=paste(area_name, "- First order differencing Red Light Violations - PACF"),
-    lag.max=100
-  )
-}
-
-par(mfrow=c(1, 1))
-```
+Important spikes at lag 7, importance of weekdays. Data it's not stationary so we cannot give real intepretation to the ACF and PACF in terms of ARIMA models.
 
 Let's perform the same reasoining with a weekly differencing
 
-```{r}
+```{r ts display 7th order differencing}
 for(area_name in names.area) {
     
   daily <- area.ts.daily[[area_name]]
   
-  diff7 <- diff(daily, 1) 
+  tsdisplay_differencing(
+    ts=daily, 
+    main=paste(area_name, " - Red Camera Violations"),
+    order=7,
+    ylab="Daily violations")
+}
+```
+
+```{r acf pacf 7h order differencing}
+plot_multipe_differencing_acf_pacf(
+  ts_list = area.ts.daily,
+  names = names.area,
+  main="Red Camera Vioations",
+  order=7
+)
+```
+
+Not the behaviour we expect removing a signficant seasonality monthly we have seen.
+```{r ts display 7th order differencing}
+for(area_name in names.area) {
+    
+  monthly <- area.ts.monthly[[area_name]]
   
-  tsdisplay(
-    diff7,
-    main=paste(area_name, "- First order differencing Red Light Violations ACF and PACF"),
-    ylab=expression(Y[t] - Y[t-7] ~ "Daily observations"),
-    lag.max=100
+  tsdisplay_differencing(
+    ts=monthly, 
+    main=paste(area_name, " - Red Camera Violations"),
+    ylab="Monthly violations")
+}
+```
+
+```{r ts display 7th order differencing}
+for(area_name in names.area) {
+    
+  monthly <- area.ts.monthly[[area_name]]
+  
+  tsdisplay_differencing(
+    ts=monthly, 
+    main=paste(area_name, " - Red Camera Violations"),
+    order=12,
+    ylab="Monthly violations")
+}
+```
+
+
+Weeklyplot
+```{r weeklyplot}
+for(area_name in names.area) {
+    
+  df <- area.df[[area_name]]
+  
+  weeklyplot(
+    df=df,
+    main=paste(area_name, "Weekly plot")
   )
 }
 ```
+
+
+Let's for example try to split weekdays from weekends.
+
+```{r weekday weekend split}
+region.ts.weeklydays <- lapply(
+  region.df, 
+  daily_df_to_weekly_ts_weekday_weekend
+)
+
+area.ts.weeklydays <- lapply(
+  area.df, 
+  daily_df_to_weekly_ts_weekday_weekend
+)
+```
+
+Plot them
+
+```{r weekday weekend plot}
+par(mfrow = c(2, length(area.ts.weeklydays)))
+  
+# Weekdays
+for(area_name in names.area) {
+  
+  weekly <- area.ts.weeklydays[[area_name]]
+  
+  plot(
+    weekly$weekday,
+    main=paste(area_name, "- Weekday"),
+    ylab="Weekly violations"
+  )
+}
+
+# Weekends
+for(area_name in names.area) {
+  
+  weekly <- area.ts.weeklydays[[area_name]]
+  
+  plot(
+    weekly$weekend,
+    main=paste(area_name, "- Weekend"),
+    ylab="Weekly violations"
+  )
+}
+  
+par(mfrow=c(1,1))
+```
+
+No big difference, just more accentuated lows in the winter during weekends
+
+Plot cross correlation
+
+```{r weekday weekend ccf}
+par(mfrow = c(length(area.ts.weeklydays), 1))
+
+for(area_name in names.area) {
+  
+  weekly <- area.ts.weeklydays[[area_name]]
+  
+  ccf(
+    x=as.numeric(weekly$weekday),
+    y=as.numeric(weekly$weekday),
+    lag.max = 104,
+    main=paste(area_name ,"- Weekdays and Weekend Cross Correlogram"),
+    ylab="CCF"
+  )
+  
+}
+
+par(mfrow=c(1,1))
+```
+
+See linear relationships fitting linear regression
+
+```{r weekday weekend liear relationship}
+par(mfrow = c(length(area.ts.weeklydays), 1))
+
+for(area_name in names.area) {
+  
+  weekly <- area.ts.weeklydays[[area_name]]
+  
+  violations.weekday <- as.numeric(weekly$weekday)
+  violations.weekend <- as.numeric(weekly$weekend)
+  
+  plot(
+    x=violations.weekday,
+    y=violations.weekend,
+    pch=16, col="steelblue",
+    main=paste(area_name, "- Weekdays VS Weekend violations"),
+    xlab="Weekly violations on weekdays",
+    ylab="Weekly violations on weekdays",
+  )
+  grid()
+  
+  fit <- lm(violations.weekend ~ violations.weekday)
+  abline(fit,  col = "orangered", lwd = 2, lty="dashed")
+  
+}
+
+par(mfrow=c(1,1))
+```
+
+### ARIMA Decomposition
+
+We'll treat each component individually
+
+#### North
+
+```{r ts display differencing}
+
+tsdisplay_differencing(
+  ts=area.ts.daily$North,
+  main="North",
+  ylab="Daily violations"
+)
+
+tsdisplay_differencing(
+  ts=area.ts.daily$North,
+  order=1,
+  main="North",
+  ylab="Daily violations"
+)
+
+tsdisplay_differencing(
+  ts=area.ts.daily$North,
+  order=7,
+  main="North",
+  ylab="Daily violations"
+)
+
+tsdisplay_differencing(
+  ts=area.ts.daily$North,
+  order=30,
+  main="North",
+  ylab="Daily violations"
+)
+
+tsdisplay_differencing(
+  ts=area.ts.daily$North,
+  order=365,
+  main="North",
+  ylab="Daily violations"
+)
+```
+
+with weekly
+```{r}
+tsdisplay_differencing(
+  ts=area.ts.weekly$North,
+  main="North",
+  ylab="Weekly violations"
+)
+
+tsdisplay_differencing(
+  ts=area.ts.weekly$North,
+  order=50,
+  main="North",
+  ylab="Weekly violations"
+)
+```
+
+
+with monthly
+
+```{r}
+tsdisplay_differencing(
+  ts=area.ts.monthly$North,
+  main="North(Monthly)",
+  ylab="Monthly violations"
+)
+
+tsdisplay_differencing(
+  ts=area.ts.monthly$North,
+  order=12,
+  main="North(Monthly)",
+  ylab="Monthly violations"
+)
+```
+
+Start with monthly
+```{r}
+fit_monthly <- auto.arima(area.ts.monthly$North)
+summary(fit_monthly)
+tsdiag(fit_monthly)
+fit_monthly$aic
+plot(forecast(fit_monthly, h=12))
+```
+
+Move to daily
+```{r}
+fit_weekly <- auto.arima(area.ts.weekly$North)
+summary(fit_weekly)
+tsdiag(fit_weekly)
+fit_weekly$aic
+plot(forecast(fit_weekly, h=50))
+```
+
+Move to daily
+```{r}
+fit_daily <- auto.arima(area.ts.daily$North)
+summary(fit_daily)
+tsdiag(fit_daily)
+fit_daily$aic
+plot(forecast(fit_daily, h=50))
+```
+
+Let's try with a periodicity of 365
+
+
+```{r}
+fit1 <- arima(
+  area.ts.daily$North, 
+  order = c(0, 0, 0), 
+  seasonal = list(order = c(1, 0, 0), 
+  period = 365)
+)
+plot(forecast(fit1, h=100))
+```
+
+
