@@ -1,20 +1,23 @@
 # File: smoothing.R
 # Author: Sebastiano Quintavalle
 # Date: 2024-01-26
-# Description: This file contains functions for applying smoothing filters and performing time series analysis.
+# Description: This file contains functions for applying smoothing and high pass filters and performing time series analysis.
 
 
-#' Apply a smoothing filter to a time series.
+# --- Filtering ---
+#' Apply Filtering to Time Series
 #'
-#' This function applies a smoothing filter to a given time series using the specified weights.
+#' This function applies a specified filter to a time series object.
 #'
-#' @param ts A time series object.
-#' @param weights The filter weights to be used for smoothing.
-#' @return A smoothed time series object.
+#' @param ts Time series object (\code{ts}) representing the data to be filtered.
+#' @param weights Numeric vector specifying the filter weights.
 #'
-smoothing_filter <- function(ts, weights) {
+#' @return Returns a time series object (\code{ts}) representing the result of applying
+#'         the specified filter to the input time series.
+#'
+apply_filtering <- function(ts, weights) {
   
-  # Apply the smoothing filter using the specified weights
+  # Apply the filter using the specified weights
   ts_filtered <- filter(
     x=ts,
     sides=2,
@@ -26,41 +29,44 @@ smoothing_filter <- function(ts, weights) {
 }
 
 
-#' Calculate the simple moving average of a time series.
+# --- Moving Average ---
+
+#' Calculate Simple Moving Average for Time Series
 #'
-#' This function computes the simple moving average of a given time series
+#' This function calculates the simple moving average for a given time series object
 #' using a specified window size.
 #'
-#' @param ts A time series object.
-#' @param p Window size for the moving average. The window size is 2*p+1.
-#' @return A time series object representing the simple moving average.
+#' @param ts Time series object (\code{ts}) representing the data to be smoothed.
+#' @param p Integer, the window size for the moving average.
 #'
-simple_moving_average <- function(ts, p) {
+#' @return Returns a time series object (\code{ts}) representing the result of the
+#'         simple moving average calculation.
+#'
+simple_ma <- function(ts, p) {
   
   # Weights for the moving average
   ma.weights <- rep(1 / (2 * p + 1), 2 * p + 1)
   
   # Applying the smoothing filter to calculate the moving average
-  ma.filter <- smoothing_filter(ts=ts, weights=ma.weights)
+  ma.filter <- apply_filtering(ts=ts, weights=ma.weights)
   
   return(ma.filter)
   
 }
 
 
-#' Plot simple moving averages with varying window sizes.
+#' Plot Simple Moving Averages with Varying Window Sizes
 #'
-#' This function plots a time series and overlays multiple simple moving averages 
-#' with varying window sizes.
+#' This function overlays simple moving averages with varying window sizes on the
+#' original time series plot, allowing for visual comparison.
 #'
-#' @param ts A time series object.
-#' @param p Vector of window sizes for the moving averages.
-#' @param p.color Vector of colors corresponding to each window size.
+#' @param ts Time series object (\code{ts}) representing the original data.
+#' @param p Numeric vector specifying the window sizes for the moving averages.
+#' @param p.color Character vector specifying the colors for each moving average.
 #' @param main Main title for the plot.
 #' @param ylab Label for the y-axis.
-#' @return NULL
 #'
-simple_moving_average_varying_p <- function(ts, p, p.color, main, ylab) {
+plot_simple_ma_varying_p <- function(ts, p, p.color, main, ylab) {
   
   # Plot the original time series
   plot(
@@ -72,7 +78,7 @@ simple_moving_average_varying_p <- function(ts, p, p.color, main, ylab) {
   # Overlay simple moving averages with varying window sizes
   for (i in seq_along(p)) {
     lines(
-      simple_moving_average(ts, p[i]),
+      simple_ma(ts=ts, p=p[i]),
       lwd=3, lty='dashed',
       col=p.color[i]
     )
@@ -85,11 +91,54 @@ simple_moving_average_varying_p <- function(ts, p, p.color, main, ylab) {
     lwd=2, lty=1, col=p.color
   )
   
-  # Return NULL as the result is a plot, and it's typically not assigned to a variable.
-  return(NULL)
 }
 
 
+#' Plot Moving Average Decomposition Components
+#'
+#' This function decomposes a time series into its components (observed, trend, seasonal,
+#' and random) using the moving average method and plots them for visual inspection.
+#'
+#' @param ts Time series object (\code{ts}) to be decomposed.
+#' @param main Main title for the plot.
+#'
+#' @return Returns \code{NULL} as the result is a plot, and it's typically not
+#'         assigned to a variable.
+#'
+plot_ma_decomposition <- function(ts, main) {
+  
+  # Decompose the time series
+  decomposition <- decompose(ts)
+  
+  # Combine components for plotting
+  trends <- cbind(
+    observed = decomposition$x,
+    trend    = decomposition$trend, 
+    seasonal = decomposition$seasonal, 
+    random   = decomposition$random
+  )
+  
+  # Plot the decomposition
+  plot(
+    trends, 
+    main = main
+  )
+}
+
+
+# --- Binomial ---
+
+#' Calculate Binomial Smoothing for Time Series
+#'
+#' This function calculates the binomial smoothing for a given time series object
+#' using a specified order.
+#'
+#' @param ts Time series object (\code{ts}) representing the data to be smoothed.
+#' @param p Integer, the order of the binomial smoothing.
+#'
+#' @return Returns a time series object (\code{ts}) representing the result of the
+#'         binomial smoothing calculation.
+#'
 binomial <- function(ts, p) {
   
   # Generating pascal triangle
@@ -106,16 +155,29 @@ binomial <- function(ts, p) {
     }
   }
   
+  # Retrieve weights from the last triangle row
   binomial.weights = triangle[p, ] / 2^(p-1)
   
   # Applying the smoothing filter to calculate the moving average
-  binomial.filter <- smoothing_filter(ts=ts, weights=binomial.weights)
+  binomial.filter <- apply_filtering(ts=ts, weights=binomial.weights)
   
   return(binomial.filter)
   
 }
 
-binomial_varying_p <- function(ts, p, p.color, main, ylab) {
+
+#' Plot Binomial Smoothings with Varying Orders
+#'
+#' This function overlays binomial smoothings with varying orders on the original
+#' time series plot, allowing for visual comparison.
+#'
+#' @param ts Time series object (\code{ts}) representing the original data.
+#' @param p Numeric vector specifying the orders for the binomial smoothings.
+#' @param p.color Character vector specifying the colors for each binomial smoothing.
+#' @param main Main title for the plot.
+#' @param ylab Label for the y-axis.
+#'
+plot_binomial_varying_p <- function(ts, p, p.color, main, ylab) {
   
   # Plot the original time series
   plot(
@@ -127,7 +189,7 @@ binomial_varying_p <- function(ts, p, p.color, main, ylab) {
   # Overlay simple moving averages with varying window sizes
   for (i in seq_along(p)) {
     lines(
-      binomial(ts, p[i]),
+      binomial(ts=ts, p=p[i]),
       lwd=3, lty='dashed',
       col=p.color[i]
     )
@@ -140,17 +202,19 @@ binomial_varying_p <- function(ts, p, p.color, main, ylab) {
     lwd=2, lty=1, col=p.color
   )
   
-  # Return NULL as the result is a plot, and it's typically not assigned to a variable.
-  return(NULL)
 }
 
 
-#' Apply the Spencer filter to a time series.
+# --- Spencer ---
+
+#' Apply Spencer Filter to Time Series
 #'
-#' This function applies the Spencer filter to a given time series using predefined weights.
+#' This function applies the Spencer filter to a given time series object.
 #'
-#' @param ts A time series object.
-#' @return A time series object after applying the Spencer filter.
+#' @param ts Time series object (\code{ts}) representing the data to be filtered.
+#'
+#' @return Returns a time series object (\code{ts}) representing the result of
+#'         applying the Spencer filter to the input time series.
 #'
 spencer <- function(ts) {
   
@@ -160,21 +224,15 @@ spencer <- function(ts) {
   spencer.weights <- spencer.weights / sum(spencer.weights) 
   
   # Apply the Spencer filter using the specified weights
-  spencer.filter <- smoothing_filter(ts=ts, weights=spencer.weights)
+  spencer.filter <- apply_filtering(ts=ts, weights=spencer.weights)
   
   return(spencer.filter)
   
 }
 
 
-#' Apply a deseasoning filter to a time series.
-#'
-#' This function applies a deseasoning filter to a given time series using predefined weights.
-#'
-#' @param ts A time series object.
-#' @param freq The frequency of the seasonality in the time series.
-#' @return A time series object after applying the deseasoning filter.
-#'
+# --- Deseasoning ---
+
 deseasoning <- function(ts, freq) {
   
   # Define deseasoning filter weights
@@ -182,12 +240,93 @@ deseasoning <- function(ts, freq) {
   deseasoning.weights <- deseasoning.weights / sum(deseasoning.weights)
   
   # Apply the deseasoning filter using the specified weights
-  deseasoning.filter <- smoothing_filter(ts=ts, weights=deseasoning.weights)
+  deseasoning.filter <- apply_filtering(ts=ts, weights=deseasoning.weights)
   
   return(deseasoning.filter)
   
 }
 
 
+# -- STL ---
 
+#' Apply Deseasoning Filter to Time Series
+#'
+#' This function applies a deseasoning filter to a given time series object.
+#'
+#' @param ts Time series object (\code{ts}) representing the data to be filtered.
+#' @param freq Integer, the frequency of the seasonal pattern in the time series.
+#'
+#' @return Returns a time series object (\code{ts}) representing the result of
+#'         applying the deseasoning filter to the input time series.
+#'
+plot_stl_decomposition <- function(ts, main) {
+  
+  # Decompose the time series
+  decomposition <- stl(ts, s.window=frequency(ts))
+  decomposition.ts <- decomposition$time.series
+  
+  # Combine components for plotting
+  trends <- cbind(
+    trend    = decomposition.ts[, "trend"    ], 
+    seasonal = decomposition.ts[, "seasonal" ], 
+    random   = decomposition.ts[, "remainder"]
+  )
+  
+  # Plot the decomposition
+  plot(
+    trends, 
+    main=main
+  )
+}
 
+#' Plot STL Decomposition Components for Multiple Time Series
+#'
+#' This function plots specified components (e.g., trend, seasonal, random) of the STL
+#' decomposition for multiple time series objects.
+#'
+#' @param ts_list List of time series objects (\code{ts}) to be decomposed.
+#' @param names Character vector of names corresponding to each time series in \code{ts_list}.
+#' @param component_name Character, the name of the component to plot (e.g., "trend", "seasonal").
+#' @param freq Integer, the frequency of the seasonal pattern in the time series.
+#' @param main Main title for the plot.
+#' @param ylab Label for the y-axis.
+#'
+plot_stl_components <- function(ts_list, names, component_name, freq=NA, main, ylab) {
+  
+  # Set up multiple plots in a single column
+  par(mfrow = c(length(ts_list), 1), oma=c(0,0,2,0))
+  
+  # Loop through each time series and decompose the specified component
+  for (name in names) {
+    
+    ts <- ts_list[[name]]
+    
+    # Setting frequency
+    if (is.na(freq)) {
+      print("Setting")
+      freq <- frequency(ts)
+      
+    } else {
+      freq_ <- freq
+    }
+    
+    # Decompose the specified component
+    decomposition <- stl(ts, s.window=freq)
+    component     <- decomposition$time.series[, component_name]
+    
+    # Plot the component
+    plot(
+      component,
+      main = name,
+      ylab = ylab
+    )
+    
+  }
+  
+  # Add a main title for the entire plot
+  mtext(main, side = 3, line = - 2, padj=-1, outer=TRUE)
+  
+  # Reset the plotting layout
+  par(mfrow = c(1, 1), oma=c(0,0,0,0))
+  
+}

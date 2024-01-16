@@ -1,18 +1,26 @@
-# File: utils.R
+# File: time.R
 # Author: Sebastiano Quintavalle
 # Date: 2024-01-26
-# Description: Utility functions for time series manipulation and visualization.
+# Description: # File: time.R
+# Author: Sebastiano Quintavalle
+# Date: 2024-01-26
+# Description: the file contains set of functions facilitating the conversion 
+#              of daily violation datasets into various time series representations,
+#              including daily, monthly, and weekly aggregations, along with utility
+#              functions for handling time-related operations.
 
 # --- Daily dataset to time series conversion ---
 
-#' Convert a daily data frame to a time series object.
+#' Convert Daily Dataframe to Daily Time Series
 #'
-#' This function takes a data frame with a "Date" column and a "Violations" column
-#' and converts it into a time series object. 
-#' The time series is created with a specified starting date and frequency.
+#' This function takes a daily dataframe containing violation data and converts
+#' it into a daily time series object.
 #'
-#' @param df A data frame with "Date" and "Violations" columns.
-#' @return A time series object.
+#' @param df Daily dataframe with columns "Date" and "Violations" representing
+#'        the date and corresponding number of violations.
+#'
+#' @return Returns a daily time series object (\code{ts}) with the violations
+#'         data, starting from the first date in the input dataframe.
 #'
 daily_df_to_daily_ts <- function(df) {
   
@@ -32,14 +40,16 @@ daily_df_to_daily_ts <- function(df) {
 }
 
 
-#' Convert a daily data frame to a monthly time series object.
+#' Convert Daily Dataframe to Monthly Time Series
 #'
-#' This function takes a data frame with a "Date" column and a "Violations" column,
-#' creates a monthly aggregation, and converts it into a time series object.
-#' The time series is created with a specified starting date and frequency.
+#' This function takes a daily dataframe containing violation data and converts
+#' it into a monthly time series object by aggregating the violations for each month.
 #'
-#' @param df A data frame with "Date" and "Violations" columns.
-#' @return A monthly time series object.
+#' @param df Daily dataframe with columns "Date" and "Violations" representing
+#'        the date and corresponding violations.
+#'
+#' @return Returns a monthly time series object (\code{ts}) with the aggregated
+#'         violations data, starting from the first date in the input dataframe.
 #'
 daily_df_to_monthly_ts <- function(df) {
   
@@ -63,6 +73,17 @@ daily_df_to_monthly_ts <- function(df) {
 }
 
 
+#' Convert Daily Dataframe to Monthly Time Series
+#'
+#' This function takes a daily dataframe containing violation data and converts
+#' it into a monthly time series object by aggregating the violations for each month.
+#'
+#' @param df Daily dataframe with columns "Date" and "Violations" representing
+#'        the date and corresponding violations.
+#'
+#' @return Returns a monthly time series object (\code{ts}) with the aggregated
+#'         violations data, starting from the first date in the input dataframe.
+#'
 daily_df_to_weekly_ts <- function(df) {
   
   # Create month column to aggregate with
@@ -77,7 +98,7 @@ daily_df_to_weekly_ts <- function(df) {
   start.date <- df$Date[1]
   start.year <- as.numeric(format(start.date, "%Y"))
   start.week <- as.numeric(format(start.date, "%U"))
-
+  
   # Creating monthly time series
   weekly.ts <- ts(
     weekly.df$Violations, 
@@ -88,17 +109,20 @@ daily_df_to_weekly_ts <- function(df) {
   return(weekly.ts)
 }
 
-
-#' Convert a daily data frame to separate weekly time series for weekdays and weekends.
+#' Convert Daily Dataframe to Weekly Time Series with Weekday/Weekend breakdown
 #'
-#' This function takes a data frame with a "Date" column and a "Violations" column, 
-#' generates separate time series for weekdays and weekends,
-#' and returns a list  containing both time series objects.
-#' The time series are created with a specified starting date and frequency.
+#' This function takes a daily dataframe containing violation data and converts
+#' it into two weekly time series objects: one for weekdays and one for weekends.
+#' 
+#' @param df Daily dataframe with columns "Date" and "Violations" representing
+#'        the date and corresponding violations.
 #'
-#' @param df A data frame with "Date" and "Violations" columns.
-#' @return A list containing two time series objects for weekdays and weekends.
-#'
+#' @return Returns a list with two weekly time series objects (\code{ts}):
+#'  \itemize{
+#'    \item \code{weekday}: Time series for violations on weekdays.
+#'    \item \code{weekend}: Time series for violations on weekends.
+#'  }
+#
 daily_df_to_weekly_ts_weekday_weekend <- function(df) {
   
   # Generating Weekday name
@@ -109,14 +133,15 @@ daily_df_to_weekly_ts_weekday_weekend <- function(df) {
   df$Year       <- as.numeric(format(df$Date, "%Y"))
   df$WeekNumber <- as.numeric(format(df$Date, "%U"))
   
-  # Generating Weekday or Weekend classification
+  # Generating Weekday or Weekend class
   names.weekday <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
   names.weekend <- c("Saturday", "Sunday")
   
   df$Weekday <- ifelse(df$WeekdayName %in% names.weekday, "Weekday",
                        ifelse(df$WeekdayName %in% names.weekend, "Weekend", NA))
+  df$Weekday <- as.factor(df$Weekday)
   
-  # Dropping first and last week that doesn't cover the all keep
+  # Dropping first and last week that doesn't cover the entire year
   df <- subset(df, !(WeekNumber %in% c(0, 52, 53)))
   
   # Aggregating data by Weekday, WeekNumber, and Year
@@ -150,22 +175,20 @@ daily_df_to_weekly_ts_weekday_weekend <- function(df) {
   
 }
 
-
 # --- Time utils ---
 
-#' Get observation dates exceeding or falling below a threshold in a time series.
+#' Get Dates with Violations Over/Under a Threshold
 #'
-#' This function takes a time series object, a threshold value, and an optional 
-#' parameter specifying whether to find observations above or below the threshold. 
-#' It returns the dates corresponding to the observations exceeding or falling below 
-#' the specified threshold.
+#' This function takes a time series object and a threshold value and returns
+#' the dates where the violations are either over or under the specified threshold.
 #'
-#' @param ts A time series object.
-#' @param threshold The threshold value for observations.
-#' @param upper Logical. If TRUE, find observations above the threshold; 
-#'              if FALSE, find observations below the threshold.
-#' @return A vector of dates corresponding to observations exceeding or falling 
-#'         below the threshold.
+#' @param ts Time series object (\code{ts}) representing the violations data.
+#' @param threshold Numeric threshold value to compare with the violations.
+#' @param upper Logical, indicating whether to find observations above (\code{TRUE}) or
+#'        below (\code{FALSE}) the threshold. Default is \code{TRUE}.
+#'
+#' @return Returns a vector of dates corresponding to the observations over or under
+#'         the specified threshold.
 #'
 get_observation_over_threshold <- function(ts, threshold, upper=TRUE) {
   
@@ -186,14 +209,14 @@ get_observation_over_threshold <- function(ts, threshold, upper=TRUE) {
 }
 
 
-#' Convert a floating-point representation of a date to a Date object.
+#' Convert Float Times to Date Format
 #'
-#' This function takes a floating-point representation of a date, where the integer
-#' part represents the year and the decimal part represents the day of the year, 
-#' and converts it into a Date object.
+#' This function takes a vector of float times (as used in time series) and converts
+#' them into a Date format, assuming the float times represent the day of the year.
 #'
-#' @param date_float A floating-point representation of a date.
-#' @return A Date object.
+#' @param date_float Numeric vector representing float times.
+#'
+#' @return Returns a vector of Date objects corresponding to the input float times.
 #'
 float_to_date <- function(date_float) {
   
@@ -208,108 +231,4 @@ float_to_date <- function(date_float) {
   date_object <- as.Date(paste(year, "-", day_of_year, sep = ""), format="%Y-%j")
   
   return(date_object)
-}
-
-
-# --- Plot ---
-
-#' Plot the decomposition of a time series.
-#'
-#' This function takes a time series object, decomposes it into its observed, trend, 
-#' seasonal, and random components, and plots the resulting components.
-#'
-#' @param ts A time series object.
-#' @param main Main title for the plot.
-#' @return NULL
-#'
-plot_ma_decomposition <- function(ts, main) {
-  
-  # Decompose the time series
-  decomposition <- decompose(ts)
-  
-  # Combine components for plotting
-  trends <- cbind(
-    observed = decomposition$x,
-    trend    = decomposition$trend, 
-    seasonal = decomposition$seasonal, 
-    random   = decomposition$random
-  )
-  
-  # Plot the decomposition
-  plot(
-    trends, 
-    main = main
-  )
-  # Return NULL as the result is a plot
-  return(NULL)
-}
-
-plot_stl_decomposition <- function(ts, freq=NA, main) {
-  
-  # Setting frequency
-  if (is.na(freq)) {
-    freq <- frequency(ts)
-  }
-  
-  # Decompose the time series
-  decomposition <- stl(ts, s.window=freq)
-  decomposition.ts <- decomposition$time.series
-  
-  # Combine components for plotting
-  trends <- cbind(
-    trend    = decomposition.ts[, "trend"    ], 
-    seasonal = decomposition.ts[, "seasonal" ], 
-    random   = decomposition.ts[, "remainder"]
-  )
-  
-  # Plot the decomposition
-  plot(
-    trends, 
-    main=main
-  )
-  # Return NULL as the result is a plot
-  return(NULL)
-}
-
-
-#' Plot multiple time series on the same graph.
-#'
-#' This function takes a list of time series objects, a list of colors, and a list of legends.
-#' It plots the time series on the same graph with specified colors and legends.
-#'
-#' @param time_series_list A list of time series objects.
-#' @param colors A list of colors for each time series.
-#' @param legends A list of legend names for each time series.
-#' @param main Main title for the plot.
-#' @param ylab Label for the y-axis.
-#' @return NULL
-#'
-plot_multiple_time_series <- function(ts_list, colors, legends, main, ylab) {
- 
-  # Get the number of time series
-  num_series <- length(ts_list)
-  
-  first_name = names(ts_list)[1]
-  
-  # Plot the first time series
-  plot(
-    ts_list[[first_name]],
-    ylim=range(unlist(ts_list)),
-    type="l", col=colors[[first_name]],
-    main=main, xlab="Year", ylab=ylab
-  )
-  
-  # Add the remaining time series to the plot
-  for (i in 2:num_series) {
-    i_name = names(ts_list)[i]
-    lines(ts_list[[i_name]], type="l", col=colors[[i_name]])
-  }
-  
-  # Add legend
-  legend("topright",
-         legend=legends,
-         lty=1, col=unlist(colors))
-  
-  # Return NULL as the result is a plot, and it's typically not assigned to a variable.
-  return(NULL)
 }

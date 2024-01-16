@@ -22,8 +22,15 @@ names.regions <- list(
 )
 
 # Name of weekdays for weekly analysis
-names.weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
-                    "Saturday", "Sunday")
+names.weekdays <- c(
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday"
+)
 
 
 # Area colors
