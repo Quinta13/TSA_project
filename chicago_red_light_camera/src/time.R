@@ -232,3 +232,27 @@ float_to_date <- function(date_float) {
   
   return(date_object)
 }
+
+arima_formula <- function (fit) {
+  
+  # Extract order
+  order <- arimaorder(fit)
+  
+  # Create formula
+  formula_ <- paste(
+    paste(
+      "ARIMA(", 
+      order['p'], ",", 
+      order['d'], ",", 
+      order['q'], ")(",
+      order['P'], ",", 
+      order['D'], ",",
+      order['Q'], ")[", 
+      order['Frequency'], "]",
+      sep = ""
+    )
+  )
+  
+  return(formula_)
+  
+}

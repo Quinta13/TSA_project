@@ -15,7 +15,7 @@
 #' @param main Main title for the plot.
 #' @param ylab Label for the y-axis.
 #'
-plot_multiple_time_series <- function(ts_list, colors, legends, main, ylab) {
+plot_multiple_time_series <- function(ts_list, colors, main, ylab) {
   
   # Get the number of time series
   num_series <- length(ts_list)
@@ -38,7 +38,7 @@ plot_multiple_time_series <- function(ts_list, colors, legends, main, ylab) {
   
   # Add legend
   legend("topright",
-         legend=legends,
+         legend=names(ts_list),
          lty=1, col=unlist(colors))
 }
   
@@ -52,11 +52,11 @@ plot_multiple_time_series <- function(ts_list, colors, legends, main, ylab) {
 #' @param df Data frame with Date, Violations, and WeekdayName columns.
 #' @param main Main title for the plot.
 #'
+#'
 weeklyplot <- function(df, main) {
   
   # Create weekname
   df$WeekdayName = weekdays(df$Date)
-  df$WeekdayName = as.factor(df$WeekdayName)
   
   # Split per weekday
   weekdays.df <- split(
@@ -90,5 +90,57 @@ weeklyplot <- function(df, main) {
   
   # Reset the plotting parameters
   par(mfrow = c(1, 1), oma = c(0, 0, 0, 0))
+}
+
+weeklymonthlyplot <- function(df, main) {
+  
+  # Create weekname
+  df$Month   = as.integer(format(df$Date, "%m"))
+  df$Weekday = as.integer(format(df$Date, "%u"))
+
+  # Plotting each weekday and month trend
+  par(mfrow = c(12, 7), mar = c(4, 4, 2, 1), oma = c(0, 0, 3, 0))
+  
+  for(month_idx in 1:12) {
+    
+    # Extracting month dataset
+    month.df <- df[df$Month == month_idx, ]
+    
+    # Split per weekday
+    weekdaysmonth.df <- split(
+      month.df,
+      month.df$Weekday
+    )
+    
+    # Compute range
+    weekdaysmonth.range <- range(do.call(c, lapply(weekdaysmonth.df, function(x) x$Violations)))
+    
+    for(week_idx in 1:7) {
+      
+      plot(
+        weekdaysmonth.df[[week_idx]]$Date,
+        weekdaysmonth.df[[week_idx]]$Violations,
+        type = "l",
+        xlab = "",
+        ylab = "",
+        main = paste(
+          substr(names.months[month_idx], 1, 3),
+          "-",
+          substr(names.weekdays[week_idx], 1, 3)
+        ),
+        ylim = weekdaysmonth.range
+      )
+
+      abline(h=mean(weekdaysmonth.df[[week_idx]]$Violations))
+      
+    }
+  }
+  
+  # Add a main title for the entire plot
+  mtext(main, line = 0, side = 3, outer = TRUE, cex = 1.5)
+  
+  # Reset the plotting parameters
+  par(mfrow = c(1, 1), oma = c(0, 0, 0, 0))
+  
 }
 

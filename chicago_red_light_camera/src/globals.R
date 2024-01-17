@@ -11,6 +11,8 @@ daily.freq   <- 365.25  # Daily   frequency (considering leap years)
 weekly.freq  <- 52      # Weekly  frequency
 monthly.freq <- 12      # Monthly frequency
 
+names.freq <- c("Daily", "Weekly", "Yearly")
+
 # Names of the three Chicago areas
 names.area    <- c("North", "Center", "South")
 
@@ -21,15 +23,14 @@ names.regions <- list(
   South  = c('FarSouthWest', 'FarSouthEast')
 )
 
-# Name of weekdays for weekly analysis
+# Name of months and weekdays for weekly analysis
+names.months <- c(
+  "January", "February", "March",     "April",    "May",       "June",
+  "July",    "August",   "September", "October",  "November",  "December"
+)
 names.weekdays <- c(
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday"
+  "Monday",   "Tuesday", "Wednesday",
+  "Thursday", "Friday",  "Saturday",  "Sunday"
 )
 
 
