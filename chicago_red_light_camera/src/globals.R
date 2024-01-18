@@ -8,7 +8,7 @@ violation_file <- "./out/violations.csv"
 
 # Frequencies
 daily.freq   <- 365.25  # Daily   frequency (considering leap years)
-weekly.freq  <- 52      # Weekly  frequency
+weekly.freq  <- 50      # Weekly  frequency
 monthly.freq <- 12      # Monthly frequency
 
 names.freq <- c("Daily", "Weekly", "Yearly")

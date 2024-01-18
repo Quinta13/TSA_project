@@ -103,7 +103,7 @@ daily_df_to_weekly_ts <- function(df) {
   weekly.ts <- ts(
     weekly.df$Violations, 
     start=c(start.year, start.week), 
-    frequency=weekly.freq - 2
+    frequency=weekly.freq
   )
   
   return(weekly.ts)
@@ -161,13 +161,13 @@ daily_df_to_weekly_ts_weekday_weekend <- function(df) {
     weekday = ts(
       weekly.df.weekday$Violations, 
       start=c(start.year, start.week), 
-      frequency=weekly.freq - 2
+      frequency=weekly.freq
     ),
     # Weekend
     weekend = ts(
       weekly.df.weekend$Violations, 
       start=c(start.year, start.week), 
-      frequency=weekly.freq - 2
+      frequency=weekly.freq
     )
   )
   
@@ -233,26 +233,13 @@ float_to_date <- function(date_float) {
   return(date_object)
 }
 
-arima_formula <- function (fit) {
+date_to_float <- function(date) {
   
-  # Extract order
-  order <- arimaorder(fit)
+  year <- as.numeric(format(date, "%Y"))
+  day  <- as.numeric(format(date, "%j"))
   
-  # Create formula
-  formula_ <- paste(
-    paste(
-      "ARIMA(", 
-      order['p'], ",", 
-      order['d'], ",", 
-      order['q'], ")(",
-      order['P'], ",", 
-      order['D'], ",",
-      order['Q'], ")[", 
-      order['Frequency'], "]",
-      sep = ""
-    )
-  )
+  # Calculate the floating-point representation
+  date_float <- year + (day - 1) / daily.freq
   
-  return(formula_)
-  
+  return(date_float)
 }
