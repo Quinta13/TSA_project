@@ -39,6 +39,45 @@ daily_df_to_daily_ts <- function(df) {
   return(daily.ts)
 }
 
+#' Convert Daily Dataframe to Monthly Time Series
+#'
+#' This function takes a daily dataframe containing violation data and converts
+#' it into a monthly time series object by aggregating the violations for each month.
+#'
+#' @param df Daily dataframe with columns "Date" and "Violations" representing
+#'        the date and corresponding violations.
+#'
+#' @return Returns a monthly time series object (\code{ts}) with the aggregated
+#'         violations data, starting from the first date in the input dataframe.
+#'
+#'
+daily_df_to_weekly_ts <- function(df) {
+  
+  # Create month column to aggregate with
+  df$Week = as.numeric(format(df$Date, "%U"))
+  df$Year = as.numeric(format(df$Date, "%Y"))
+  
+  # Replacing the cases of 53 week
+  df$Week[df$Week == 53] <- 52
+  
+  # Taking the mean number of violations in a day
+  weekly.df <- aggregate(Violations ~ Week + Year, data=df, mean)
+  
+  # Extracting starting month
+  start.date <- df$Date[1]
+  start.year <- as.numeric(format(start.date, "%Y"))
+  start.week <- as.numeric(format(start.date, "%U"))
+  
+  # Creating monthly time series
+  weekly.ts <- ts(
+    weekly.df$Violations, 
+    start=c(start.year, start.week), 
+    frequency=weekly.freq
+  )
+  
+  return(weekly.ts)
+}
+
 
 #' Convert Daily Dataframe to Monthly Time Series
 #'
@@ -55,7 +94,7 @@ daily_df_to_monthly_ts <- function(df) {
   
   # Create month column to aggregate with
   df$Month = format(df$Date, "%Y-%m")
-  monthly.df <- aggregate(Violations ~ Month, data=df, sum)
+  monthly.df <- aggregate(Violations ~ Month, data=df, mean)
   
   # Extracting starting month
   start.date  <- df$Date[1]
@@ -70,43 +109,6 @@ daily_df_to_monthly_ts <- function(df) {
   )
   
   return(monthly.ts)
-}
-
-
-#' Convert Daily Dataframe to Monthly Time Series
-#'
-#' This function takes a daily dataframe containing violation data and converts
-#' it into a monthly time series object by aggregating the violations for each month.
-#'
-#' @param df Daily dataframe with columns "Date" and "Violations" representing
-#'        the date and corresponding violations.
-#'
-#' @return Returns a monthly time series object (\code{ts}) with the aggregated
-#'         violations data, starting from the first date in the input dataframe.
-#'
-daily_df_to_weekly_ts <- function(df) {
-  
-  # Create month column to aggregate with
-  df$Week = format(df$Date, "%Y-%U")
-  
-  # Removing first and last week
-  df <- subset(df, !(as.numeric(format(Date, "%U")) %in% c(0, 52, 53)))
-  
-  weekly.df <- aggregate(Violations ~ Week, data=df, sum)
-  
-  # Extracting starting month
-  start.date <- df$Date[1]
-  start.year <- as.numeric(format(start.date, "%Y"))
-  start.week <- as.numeric(format(start.date, "%U"))
-  
-  # Creating monthly time series
-  weekly.ts <- ts(
-    weekly.df$Violations, 
-    start=c(start.year, start.week), 
-    frequency=weekly.freq
-  )
-  
-  return(weekly.ts)
 }
 
 #' Convert Daily Dataframe to Weekly Time Series with Weekday/Weekend breakdown
@@ -134,18 +136,23 @@ daily_df_to_weekly_ts_weekday_weekend <- function(df) {
   df$WeekNumber <- as.numeric(format(df$Date, "%U"))
   
   # Generating Weekday or Weekend class
-  names.weekday <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-  names.weekend <- c("Saturday", "Sunday")
+  names.weekday <- names.weekdays[1:5]
+  names.weekend <- names.weekdays[6:7]
   
-  df$Weekday <- ifelse(df$WeekdayName %in% names.weekday, "Weekday",
-                       ifelse(df$WeekdayName %in% names.weekend, "Weekend", NA))
+  df$Weekday <- 
+    ifelse(df$WeekdayName %in% names.weekday, "Weekday",
+    ifelse(df$WeekdayName %in% names.weekend, "Weekend", NA))
   df$Weekday <- as.factor(df$Weekday)
   
   # Dropping first and last week that doesn't cover the entire year
-  df <- subset(df, !(WeekNumber %in% c(0, 52, 53)))
+  df$WeekNumber[df$WeekNumber ==  0] <- 1
+  df$WeekNumber[df$WeekNumber == 53] <- 52
   
   # Aggregating data by Weekday, WeekNumber, and Year
-  weekly.df <- aggregate(Violations ~ Weekday + WeekNumber + Year, data = df, sum)
+  weekly.df <- aggregate(
+    Violations ~ Weekday + WeekNumber + Year, 
+    data = df, mean
+  )
   
   # Extracting starting week
   start.year <- df$Year[1]
@@ -161,13 +168,13 @@ daily_df_to_weekly_ts_weekday_weekend <- function(df) {
     weekday = ts(
       weekly.df.weekday$Violations, 
       start=c(start.year, start.week), 
-      frequency=weekly.freq
+      frequency=weekly.freq-1
     ),
     # Weekend
     weekend = ts(
       weekly.df.weekend$Violations, 
       start=c(start.year, start.week), 
-      frequency=weekly.freq
+      frequency=weekly.freq-1
     )
   )
   
@@ -242,4 +249,77 @@ date_to_float <- function(date) {
   date_float <- year + (day - 1) / daily.freq
   
   return(date_float)
+}
+
+outliers_diagnostic <- function(ts, colors, main, ylab) {
+
+  plot(
+    ts,
+    main=main,
+    col=colors$plot,
+    ylab=ylab
+  )
+  grid()
+  
+  # Getting outliers index and times 
+  outliers <- tsoutliers(ts)
+  idx      <- outliers$index
+  times    <- time(ts)[idx]
+  
+  # Getting old and new observations
+  old  <- ts[idx]
+  new_ <- outliers$replacements
+  
+  points(times, old,  pch=18, col=colors$old, cex=1.5)
+  points(times, new_, pch=18, col=colors$new, cex=1.5)
+  
+  legend(
+    "topleft", 
+    legend = c("Observed outlier", "Suggested replacement"), 
+    pch = c(18, 18), 
+    col = c(colors$old, colors$new)
+  )
+  
+  for(i in 1:length(times)) {
+    print(paste(
+      float_to_date(times[i]), 
+      "- old: ", old[i], 
+      ", new: ", new_[i])
+    )
+  }
+  
+  return(outliers)
+
+}
+
+replace_outliers <- function(df, ts, outliers) {
+  
+  # Cast to integer violations
+  outliers$replacements = round(outliers$replacements)
+  
+  # Retrieve outliers dates
+  outliers$dates = float_to_date(time(ts)[outliers$index])
+  
+  # Drop outliers from the dataset
+  df <- subset(
+    df, !(Date %in% outliers$dates)
+  )
+  
+  # Create replacement rows
+  replacement <- data.frame(
+    Area = as.factor(rep("Center", length(outliers$replacements))),
+    Date = outliers$dates,
+    Violations = outliers$replacements
+  )
+  
+  # Merge the dataframe with the replacement rows
+  df <- rbind(
+    df, 
+    replacement
+  )
+  
+  # Sort the dataset by the date column
+  df <- df[order(df$Date), ]
+  
+  return(df)
 }

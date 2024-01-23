@@ -15,31 +15,28 @@
 #' @param main Main title for the plot.
 #' @param ylab Label for the y-axis.
 #'
-plot_multiple_time_series <- function(ts_list, colors, main, ylab) {
+plot_multiple_time_series <- function(ts_list, names, colors, main, ylab, lwd=1) {
   
-  # Get the number of time series
-  num_series <- length(ts_list)
-  
-  first_name = names(ts_list)[1]
   
   # Plot the first time series
   plot(
-    ts_list[[first_name]],
-    ylim=range(unlist(ts_list)),
-    type="l", col=colors[[first_name]],
-    main=main, xlab="Year", ylab=ylab
+    ts_list[[names[1]]],
+    ylim=range(unlist(ts_list), na.rm=TRUE),
+    type="l", col=colors[[names[1]]],
+    main=main, xlab="Year", ylab=ylab, lwd=lwd
   )
+  grid()
   
   # Add the remaining time series to the plot
-  for (i in 2:num_series) {
-    i_name = names(ts_list)[i]
-    lines(ts_list[[i_name]], type="l", col=colors[[i_name]])
+  for(i in 2:length(names)) {
+    i_name = names[i]
+    lines(ts_list[[i_name]], type="l", lwd=lwd, col=colors[[i_name]])
   }
   
   # Add legend
-  legend("topright",
-         legend=names(ts_list),
-         lty=1, col=unlist(colors))
+  legend("topleft",
+         legend=names,
+         lty=1, lwd=2, col=unlist(colors))
 }
   
 
@@ -92,48 +89,24 @@ weeklyplot <- function(df, main) {
   par(mfrow = c(1, 1), oma = c(0, 0, 0, 0))
 }
 
-weeklymonthlyplot <- function(df, main) {
+plot_ts_grid <- function(ts_list, n_row=1, names, colors, ylab, main) {
   
-  # Create weekname
-  df$Month   = as.integer(format(df$Date, "%m"))
-  df$Weekday = as.integer(format(df$Date, "%u"))
-
-  # Plotting each weekday and month trend
-  par(mfrow = c(12, 7), mar = c(4, 4, 2, 1), oma = c(0, 0, 3, 0))
+  par(
+    mfrow = c(n_row, ceiling(length(ts_list)/n_row)), 
+    mar   = c(4, 4, 2, 1), 
+    oma   = c(0, 0, 3, 0)
+  )
   
-  for(month_idx in 1:12) {
+  for (name in names) {
     
-    # Extracting month dataset
-    month.df <- df[df$Month == month_idx, ]
-    
-    # Split per weekday
-    weekdaysmonth.df <- split(
-      month.df,
-      month.df$Weekday
+    plot(
+      ts_list[[name]],
+      main=name,
+      col=colors[[name]],
+      ylab=ylab
     )
+    grid()
     
-    # Compute range
-    weekdaysmonth.range <- range(do.call(c, lapply(weekdaysmonth.df, function(x) x$Violations)))
-    
-    for(week_idx in 1:7) {
-      
-      plot(
-        weekdaysmonth.df[[week_idx]]$Date,
-        weekdaysmonth.df[[week_idx]]$Violations,
-        type = "l",
-        xlab = "",
-        ylab = "",
-        main = paste(
-          substr(names.months[month_idx], 1, 3),
-          "-",
-          substr(names.weekdays[week_idx], 1, 3)
-        ),
-        ylim = weekdaysmonth.range
-      )
-
-      abline(h=mean(weekdaysmonth.df[[week_idx]]$Violations))
-      
-    }
   }
   
   # Add a main title for the entire plot

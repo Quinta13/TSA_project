@@ -8,10 +8,15 @@ violation_file <- "./out/violations.csv"
 
 # Frequencies
 daily.freq   <- 365.25  # Daily   frequency (considering leap years)
-weekly.freq  <- 50      # Weekly  frequency
+weekly.freq  <- 52      # Weekly  frequency
 monthly.freq <- 12      # Monthly frequency
 
-names.freq <- c("Daily", "Weekly", "Yearly")
+names.freq <- c("Daily", "Weekly")
+names.ylab <- list(
+  Daily="Daily violations", 
+  Weekly="Avg day violations per week"#),
+  #monthly="Average daily violations (per month)")
+)
 
 # Names of the three Chicago areas
 names.area    <- c("North", "Center", "South")
@@ -49,7 +54,7 @@ region.colors <- list(
   Central      = "#bc80b8",
   West         = "#fbb462",
   SouthWest    = "#d7eff7",
-  South        = "#d9d9c0",
+  South        = "#f9ef6e",
   FarSouthWest = "#d9bc73",
   FarSouthEast = "#facee1"
 )
