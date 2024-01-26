@@ -17,10 +17,10 @@
 #'
 plot_multiple_time_series <- function(ts_list, names, colors, main, ylab, lwd=1) {
   
-  
   # Plot the first time series
   plot(
     ts_list[[names[1]]],
+    xlim=range(do.call(c, lapply(ts_list, time)), na.rm = TRUE),
     ylim=range(unlist(ts_list), na.rm=TRUE),
     type="l", col=colors[[names[1]]],
     main=main, xlab="Year", ylab=ylab, lwd=lwd

@@ -39,6 +39,13 @@ daily_df_to_daily_ts <- function(df) {
   return(daily.ts)
 }
 
+week_number_conversion <- function(date) {
+  wn <- as.numeric(format(date, "%U"))
+  wn <- ifelse(wn ==  0,  1, 
+        ifelse(wn == 53, 52, wn))
+  return(wn)
+}
+
 #' Convert Daily Dataframe to Monthly Time Series
 #'
 #' This function takes a daily dataframe containing violation data and converts
@@ -54,11 +61,8 @@ daily_df_to_daily_ts <- function(df) {
 daily_df_to_weekly_ts <- function(df) {
   
   # Create month column to aggregate with
-  df$Week = as.numeric(format(df$Date, "%U"))
+  df$Week <- sapply(df$Date, week_number_conversion)
   df$Year = as.numeric(format(df$Date, "%Y"))
-  
-  # Replacing the cases of 53 week
-  df$Week[df$Week == 53] <- 52
   
   # Taking the mean number of violations in a day
   weekly.df <- aggregate(Violations ~ Week + Year, data=df, mean)
@@ -66,7 +70,7 @@ daily_df_to_weekly_ts <- function(df) {
   # Extracting starting month
   start.date <- df$Date[1]
   start.year <- as.numeric(format(start.date, "%Y"))
-  start.week <- as.numeric(format(start.date, "%U"))
+  start.week <- week_number_conversion(date=start.date)
   
   # Creating monthly time series
   weekly.ts <- ts(

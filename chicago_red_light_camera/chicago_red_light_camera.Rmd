@@ -8,6 +8,7 @@ output:
     theme: united
   pdf_document: default
 editor_options: null
+  chunk_output_type: console
 chunk_output_type: console
 ---
 
@@ -20,21 +21,15 @@ knitr::opts_chunk$set(fig.align='center')
 # 1. Data preparation and setup
 
 ```{r environment setup, include=FALSE}
-# Clear preexisting environment
 rm(list=ls())
-
-# Set english 
 Sys.setlocale("LC_TIME", "en_US.UTF-8")
-?Sys.setlocale
 ```
 
 ```{r packages, include=FALSE}
-# Load packages
 library(forecast)
 ```
 
 ```{r source files}
-# Import local files
 source("./src/arima_utils.R")
 source("./src/globals.R")
 source("./src/plotting.R")
@@ -42,11 +37,7 @@ source("./src/smoothing.R")
 source("./src/time.R")
 ```
 
-## Data preparation
-
-### Reading file
-
-Reading the [`violations.csv`](out/violations.csv) file, containing preprocessed **daily traffic light violation** downloaded from the [Chicago Data Portal](https://data.cityofchicago.org/Transportation/Red-Light-Camera-Violations/spqx-js37/data_preview).
+Read the file preprocessed
 
 ```{r reading file}
 # Reading the file
@@ -85,58 +76,57 @@ There are a total of **nine different regions**.
 ```{r region levels}
 levels(violations.region.df$Region)
 ```
-### Inspecting daily time series
+
+```{r}
+knitr::include_graphics("./out/chicago_sides.png")
+```
+
+
+Creating a list of dataset for each different region
 
 ```{r}
 region.df <- split(
   violations.region.df,
   violations.region.df$Region
 )
+```
 
-region.ts = list()
 
-region.ts$Daily <- lapply(
+Creating daily time series
+
+```{r}
+region.ts.daily <- lapply(
   region.df, 
   daily_df_to_daily_ts
 )
-
-region.ts$Weekly <- lapply(
-  region.df, 
-  daily_df_to_weekly_ts
-)
-
-for(freq in names.freq) {
-  
-  ts <- region.ts[[freq]]
-  
-  for (region_name in unlist(names.regions)) {
-    
-    plot(
-      ts[[region_name]],
-      main=region_name,
-      col=region.colors[[region_name]],
-      ylab=names.ylab[[freq]]
-    )
-    grid()
-    
-  }
-  
-}
-
-par(mfrow = c(length(region.ts.daily) %/% 3, 3))
-
-par(mfrow = c(1, 1))
 ```
+
+Plotting daily time series
+
+```{r}
+plot_ts_grid(
+  ts_list=region.ts.daily,
+  n_row=5,
+  names=unlist(names.regions),
+  colors=region.colors,
+  main="Daily red light camera violations in Chicago regions",
+  ylab="Daily violations"
+)
+```
+
+Different degreees of magnitutes, let's plot together the data
 
 ```{r}
 plot_multiple_time_series(
-  ts_list=region.ts$Weekly,
+  ts_list=region.ts.daily,
   colors=region.colors,
-  main="AA",
-  ylab="AA"
+  names=unlist(names.regions),
+  main="Daily red light camera violations in Chicago regions",
+  ylab="Daily violations"
 )
 ```
 
+Confusing, but from the two we can retrieve two particular critical observations
 
 ```{r}
 get_observation_over_threshold(
@@ -146,13 +136,93 @@ get_observation_over_threshold(
 
 get_observation_over_threshold(
   ts=region.ts.daily$West,
-  threshold = 10,
+  threshold = 120,
   upper=FALSE
 ) 
 
+get_observation_over_threshold(
+  ts=region.ts.daily$West,
+  threshold = 110,
+  upper=FALSE
+) 
+
+
+get_observation_over_threshold(
+  ts=region.ts.daily$FarSouthEast,
+  threshold=300
+)
+```
+
+First one is about the BLM protest
+
+<br>
+```{r blm protest,  fig.cap="Protesters destroy police vehicles , on May 30, 2020 during a protest against the death of George Floyd (Photo by Jim Vondruska)", out.width = "400px", echo=FALSE, include=TRUE}
+#https://www.nbcchicago.com/news/local/20-stunning-photos-show-how-protests-unrest-unfolded-in-chicago/2281065/
+  knitr::include_graphics("https://media.nbcchicago.com/2019/09/GettyImages-1216502225.jpg?quality=85&strip=all&fit=8660%2C5773&w=775&h=436&crop=0")
+```
+
+The second ones corresponds to the very same date for which we have NAN. Nothing is found of the web, possible something didn't work so we can't rely on this observations. We won't work with regions but we must take care of the propagation of this aspect.
+
+Third historic winter snow in the north
+
+Nothing for the 13 August 2013, only swedish house mafia, local to that place, no explanation
+
+https://www.weather.gov/lot/2015_Feb01_Snow
+
+
+
+### Weekly 
+
+work at weekly level+ 53 week
+
+```{r}
+region.ts.weekly <- lapply(
+  region.df,
+  daily_df_to_weekly_ts
+)
+
+length(region.ts.weekly$Central)
+```
+
+```{r}
+# Your DataFrame df
+df <- data.frame(A = c(1, 2, 3, 4, 5))
+
+# Define your function f(a)
+f <- function(a) {
+  # Your element-wise operation here
+  result <- a * 2  # Replace this with your actual function
+  return(result)
+}
+
+# Apply the function element-wise and create a new column B
+df$B <- f(df$A)
 ```
 
 
+```{r}
+plot_ts_grid(
+  ts_list=region.ts.weekly,
+  n_row=5,
+  names=unlist(names.regions),
+  colors=region.colors,
+  main="Avg daily red light camera violations per week in Chicago regions",
+  ylab="Avg daily violations per week"
+)
+```
+
+One point as a summary of seven, smoother reduce variablity over a month. Since can be measliding let's try to plot them together
+
+```{r}
+plot_multiple_time_series(
+  ts_list=region.ts.weekly,
+  colors=region.colors,
+  names=unlist(names.regions),
+  main="Avg daily red light camera violations per week in Chicago regions",
+  ylab="Avg daily violations per week",
+  lwd=2
+)
+```
 
 ### Aggregating by areas
 
@@ -162,10 +232,13 @@ The dataset encompasses observations for **nine distinct regions** within Chicag
 * ***Center***: Central, West, SouthWest, South.
 * ***South***: FarSouthWest, FarSouthEast.
 
+Motivate why but in the end it make sense :)
+
+The NAN had no intervention so risk, but as we saw the date is problematic so the problem it's posponed but it will probably end up in a rescheduling. south missing observations.
+
 ```{r chicago sides,  fig.cap="Chicago sides", out.width = "700px", echo=FALSE, include=TRUE}
 knitr::include_graphics("./out/chicago_sides_and_areas.png")
 ```
-
 
 ```{r area definition}
 # Assigning each Region to the specific Area
@@ -195,19 +268,28 @@ head(violations.area.df)
 summary(violations.area.df)
 ```
 
+one missing, add 0
+
+```{r}
+
+# Add missing observation
+violations.area.df <- rbind(
+  violations.area.df, 
+  data.frame(
+    Area       = as.factor("South"),
+    Date       = as.Date("2021-12-07"),
+    Violations = 0
+  )
+)
+
+# Sort the dataset by the date column
+violations.area.df <- violations.area.df[order(violations.area.df$Date), ]
+```
+
 
 ### Splitting dataset
 
 We utilize the labels associated to each region and area to **partition the dataset into a list** of datasets, with each one linked to a specific region or area.
-
-```{r dataframe region split}
-# List of regions
-region.df <- split(
-  violations.region.df,
-  violations.region.df$Region
-)
-names(region.df)
-```
 
 ```{r dataframe area split}
 # List of areas
@@ -222,210 +304,186 @@ names(area.df)
 
 We employ custom functions to transform the dataset into **daily**, **weekly** and **monthly formats**. The monthly format involves aggregating the total number of violations within each month, revealing essential insights for seasonality analysis.
 
-#### Daily
+same reasoning as before at an higher level
 
-Daily time series also includes the two leap years including *29th February*; for this reason the frequency is $365.25$.
-
-```{r daily time series}
-region.ts.daily <- lapply(
-  region.df, 
-  daily_df_to_daily_ts
-)
-
+```{r}
 area.ts.daily <- lapply(
   area.df, 
   daily_df_to_daily_ts
 )
 ```
 
-#### Weekly 
-
-Weekly time series don't consider the first and the last week of the year because they have an arbitrary number of days that introduce variance different to control.
-
-```{r weekly time series}
-region.ts.weekly <- lapply(
-  region.df, 
-  daily_df_to_weekly_ts
+```{r}
+plot_ts_grid(
+  ts_list=area.ts.daily,
+  n_row=3,
+  names=names.area,
+  colors=area.colors,
+  main="Daily red light camera violations in Chicago areas",
+  ylab="Daily violations"
 )
+```
 
+all in one
+
+```{r}
+plot_multiple_time_series(
+  ts_list=area.ts.daily,
+  names=names.area,
+  colors=area.colors,
+  main="Daily red light camera violations in Chicago areas",
+  ylab="Daily violations"
+)
+```
+
+
+With weekly
+
+```{r}
 area.ts.weekly <- lapply(
   area.df, 
   daily_df_to_weekly_ts
 )
 ```
 
-## Visualization
-
-### Regions daily violaitions
-
-To begin, let's visualize the daily, weekly and monthly **violations** for each **individual region**.
-
-```{r regions ts plot, fig.width=9, fig.height=6}
-region.frequencies <- list(
-  region.ts.daily, region.ts.weekly
+```{r}
+plot_ts_grid(
+  ts_list=area.ts.weekly,
+  n_row=3,
+  names=names.area,
+  colors=area.colors,
+  main="Avg daily red light camera violations per week in Chicago regions",
+  ylab="Avg daily violations per week"
 )
-
-for(i in 1:length(region.frequencies)) {
-  
-  print(names.freq[i])
-  
-  ts <- region.frequencies[[i]]
-
-  par(mfrow = c(length(ts) %/% 3, 3))
-  
-  for (region_name in unlist(names.regions)) {
-    
-    daily        <- ts[[region_name]]
-    region_color <- region.colors[[region_name]]
-    
-    plot(
-      daily,
-      main=region_name,
-      col=region_color,
-      ylab=names.ylab[i]
-    )
-    
-  }
-  
-  par(mfrow = c(1, 1))
-
-}
 ```
+
+all in one
 
 ```{r}
-
+plot_multiple_time_series(
+  ts_list=area.ts.weekly,
+  names=names.area,
+  colors=area.colors,
+  main="Avg daily red light camera violations per week in Chicago regions",
+  ylab="Avg daily violations per week",
+  lwd=2
+)
 ```
 
-
-While the magnitude of the variations varies, the range of values for each series does not seem to require particular transformations. All nine regions exhibit significant, likely monthly, seasonal oscillation. Additionally, some regions reach more pronounced peaks in specific years, such as *Central* in 2017 or *South* in 2021.
-
-### Area violaitions
-
-Let's also visualize the **aggregated** version for each **area**.
-
-```{r areas ts plot, fig.width=8, fig.height=8}
-area.frequecies <- list(area.ts.daily, area.ts.weekly)
-
-for(i in 1:length(area.frequecies)) {
-  
-  print(names.freq[i])
-  
-  ts <- area.frequecies[[i]]
-
-  par(mfrow = c(length(names.area), 1))
-  
-  for (area_name in names.area) {
-    
-    daily      <- ts[[area_name]]
-    area_color <- area.colors[[area_name]]
-    
-    plot(
-      daily,
-      main=area_name,
-      col=area_color,
-      ylab=paste(names.freq[i], "violations")
-    )
-  }
-  
-  par(mfrow = c(1, 1))
-  
-}
-```
-
-
-The time series resemble those of the individual regions, but now some local peaks in a particular year are less evident due to the aggregation. A quick visual inspection also suggests a fairly strong similarity in the plots of the *Center* and the *South*. To better compare the three trends with different magnitudes, let's plot them together in a single graph.
-
-```{r area ts single plot, fig.width=6, fig.height=5}
-
-for(i in 1:length(area.frequecies)) {
-  
-  ts <- area.frequecies[[i]]
-
-  plot_multiple_time_series(
-    ts_list=ts,
-    colors=area.colors,
-    main=paste(names.freq[i], "violations in Chicago area"),
-    ylab=paste(names.freq[i], "violations")
-  )
-  
-}
-```
+discuss the approximation form the region, more on the center but in general good
 
 The observations recorded in the Center are generally more numerous than those in the North and especially the South. In general, the three regions seem to reflect a shared condition of the city, particularly highlighting a significant factor related to seasonality over the course of a year.
 
 ### Anomaly date
 
-From the graphs, the presence of a **remarkable outlier** in 2020 is quite evident. This outlier caused a significant pick in violations in the *Center* and *South* areas of the city, counterbalanced by a sharp decrease in the *North* area of the city.
+use outliers diagnostic based on stl decomposition
 
-```{r anomaly date}
-anomaly.date <- get_observation_over_threshold(
-  ts=area.ts.daily$Center,
-  threshold = 1500
-)
-
-anomaly.date
-```
-
-
-In general let's see if there are other outliers:
-
-
+#### North
 ```{r}
-for (area_name in names.area) {
-  
-  daily <- area.ts.daily[[area_name]]
-  
-  print(area_name)
-  
-  outliers_diagnostic(
-    ts=daily,
-    colors=list(plot=area.colors[[area_name]], 
+outliers = list()
+
+outliers$North <- outliers_diagnostic(
+    ts=area.ts.daily$North,
+    colors=list(plot=area.colors$North, 
                 old='deeppink', 
-                new='tan3'),
-    main=paste(area_name, "Outliers"),
+                new='steelblue'),
+    main=paste("North Outliers"),
     ylab="Daily violations"
   )
 
-}
-aaa
 ```
 
-
-Inspecting this phenomenon, the date corresponds to`30th May 2020`, when there was a lot of disorder in the city due to urban unrest as a consequence of **Black Lives Matter protest**, see more [here](https://en.wikipedia.org/wiki/George_Floyd_protests_in_Chicago).
-
-<br>
-```{r blm protest,  fig.cap="Protesters clash with police in Chicago , on May 30, 2020 during a protest against the death of George Floyd (Photo by Jim Vondruska)", out.width = "400px", echo=FALSE, include=TRUE}
-knitr::include_graphics("https://media.nbcchicago.com/2019/09/GettyImages-1216502248.jpg?quality=85&strip=all&fit=8660%2C5773&w=775&h=436&crop=0")
+discuss + replace
+```{r}
+# replace outliers
+area.df$North = replace_outliers(
+  df=area.df$North,
+  ts=area.ts.daily$North,
+  outliers=outliers$North
+)
 ```
-<br>
+
+#### Center
+```{r}
+outliers$Center <- outliers_diagnostic(
+    ts=area.ts.daily$Center,
+    colors=list(plot=area.colors$Center, 
+                old='deeppink', 
+                new='steelblue'),
+    main=paste("Center Outliers"),
+    ylab="Daily violations"
+)
+
+```
+
+discuss + replace
+```{r}
+# replace outliers
+area.df$Center = replace_outliers(
+  df=area.df$Center,
+  ts=area.ts.daily$Center,
+  outliers=outliers$Center
+)
+```
+
+#### South
+```{r}
+outliers$South <- outliers_diagnostic(
+    ts=area.ts.daily$South,
+    colors=list(plot=area.colors$South, 
+                old='deeppink', 
+                new='orange'),
+    main=paste("South Outliers"),
+    ylab="Daily violations"
+  )
+
+```
+
+discuss + replace
+```{r}
+# replace outliers
+area.df$South = replace_outliers(
+  df=area.df$South,
+  ts=area.ts.daily$South,
+  outliers=outliers$South
+)
+```
+
+Regenerate ts starting from dataset
+```{r}
+area.ts.daily<- lapply(
+  area.df, 
+  daily_df_to_daily_ts
+)
+area.ts.weekly <- lapply(
+  area.df, 
+  daily_df_to_weekly_ts
+)
+```
+
+and we plot back
 
 ```{r}
-for(area_name in names.area) {
-  
-  ts <- area.ts.daily[[area_name]]
-  
-  outliers <- tsoutliers(ts)
-  idx      <- outliers$index
-  times    <- time(ts)[idx]
-  
-  old <- ts[idx]
-  new_ <- outliers$replacements
-  
-  points(times, old)
-  points(times, new_)
-
-}
-
-tsoutliers(area.ts.daily$Center)$index
-  tsoutliers(area.ts.daily$Center)$replacements
-  
-  float_to_date(
-  time(area.ts.daily$Center)[tsoutliers(area.ts.daily$Center)$index]
-  )
+plot_ts_grid(
+  ts_list=area.ts.daily,
+  n_row=3,
+  names=names.area,
+  colors=area.colors,
+  main="Daily red light camera violations in Chicago areas",
+  ylab="Daily violations"
+)
 ```
 
-
-
+```{r}
+plot_ts_grid(
+  ts_list=area.ts.weekly,
+  n_row=3,
+  names=names.area,
+  colors=area.colors,
+  main="Avg daily red light camera violations per week in Chicago regions",
+  ylab="Avg daily violations per week"
+)
+```
 
 ---
 # 2. Trend and Seasonality decomposition
@@ -450,7 +508,7 @@ The value of $p$ plays a significant role in determining the effect of smoothing
 
 ```{r simple ma, fig.width=8, fig.height=8}
 # Using different values of p
-p        <- c(         60,           120,          183)
+p        <- c(         30,            90,          180)
 p.colors <- c('lawngreen', 'deepskyblue', 'chocolate1')
 
 par(mfrow = c(length(area.ts.daily), 1))
@@ -465,6 +523,29 @@ for (area_name in names.area) {
     p.color=p.colors,
     main=paste(area_name, "- Simple Moving Average filter"),
     ylab="Daily violations"
+  )
+  
+}
+par(mfrow=c(1,1))
+```
+
+```{r simple ma, fig.width=8, fig.height=8}
+# Using different values of p
+p        <- c(          6,            13,            26)
+p.colors <- c('lawngreen', 'deepskyblue', 'chocolate1')
+
+par(mfrow = c(length(area.ts.daily), 1))
+
+for (area_name in names.area) {
+  
+  weekly <- area.ts.weekly[[area_name]]
+  
+  plot_simple_ma_varying_p(
+    ts=weekly,
+    p=p,
+    p.color=p.colors,
+    main=paste(area_name, "- Simple Moving Average filter"),
+    ylab="Avg weekly violations pday"
   )
   
 }
@@ -501,7 +582,8 @@ for(area_name in names.area) {
   plot(
     daily,
     main=paste(area_name, "- Weekly deseasoning of daily observations"),
-    ylab="Daily violations"
+    ylab="Daily violations",
+    col="dimgray"
   )
   
   deseasonal.trend = deseasoning(
@@ -511,8 +593,7 @@ for(area_name in names.area) {
   
   lines(
     deseasonal.trend,
-    lty='dashed', lwd=3,
-    col='steelblue1'
+    col='firebrick1', lwd=2
   )
   
 }
@@ -534,7 +615,8 @@ for(area_name in names.area) {
   plot(
     daily,
     main=paste(area_name, "- Yearly deseasoning of daily observations"),
-    ylab="Daily violations"
+    ylab="Daily violations",
+    col="dimgray"
   )
   
   deseasonal.trend = deseasoning(
@@ -553,40 +635,6 @@ for(area_name in names.area) {
 par(mfrow=c(1,1))
 ```
 
-
-#### Yearly deseasoning of daily observations
-
-In general we expect a similar outcome as compared to previous one. A smaller number of points highlight a situation very similar to the previous one, where seasonality dependent on the annual cycle is canceled out, thus revealing a certain pattern in the data.
-
-```{r monthly yearly deseasoning, fig.width=8, fig.height=8}
-par(mfrow = c(length(area.ts.monthly), 1))
-
-for(area_name in names.area) {
-  
-  monthly <- area.ts.monthly[[area_name]]
-  
-  plot(
-    monthly,
-    main=paste(area_name, "- Yearly deseasoning of monthly data"),
-    ylab="Monthly violations"
-  )
-  
-  deseasonal.trend = deseasoning(
-    ts=monthly, 
-    as.integer(monthly.freq)
-  )
-  
-  lines(
-    deseasonal.trend,
-    lty='dashed', lwd=3,
-    col='steelblue1'
-  )
-  
-}
-
-par(mfrow=c(1,1))
-```
-  
 #### Yearly deseasoning of daily observations
 
 Finally, an analogous situation occurs when considering yearly deseasoning of weekly observations
@@ -601,7 +649,8 @@ for(area_name in names.area) {
   plot(
     weekly,
     main=paste(area_name, "- Weekly Deseasoning"),
-    ylab="Weekly violations"
+    ylab="Weekly violations",
+    color="dimgray"
   )
   
   deseasonal.trend = deseasoning(
@@ -625,11 +674,11 @@ par(mfrow=c(1,1))
 The previous results highlight the importance of a significant seasonal component tied to the month but also indicate the presence of a certain trend. The graphical tool **monthplot** allows visualizing and comparing these two components by showing 12 different time series for each month.
 
 ```{r monthplot, fig.width=8, fig.height=8}
-par(mfrow = c(length(area.ts.monthly), 1))
+par(mfrow = c(length(area.df), 1))
 
 for (area_name in names.area) {
   
-  monthly <- area.ts.monthly[[area_name]]
+  monthly <- daily_df_to_monthly_ts(df=area.df[[area_name]])
   
   monthplot(
     monthly,
@@ -671,44 +720,47 @@ A more powerful decomposition tool is STL (Seasonal and Trend decomposition usin
 
 #### Daily
 ```{r stl daily decomposition, fig.width=6, fig.height=5}
-for(area_name in names.area) {
-  
-  daily <- area.ts.daily[[area_name]]
-  
-  plot_stl_decomposition(
-    ts=daily,
-    main=paste(area_name, "- Daily STL Decomposition")
-  )
-}
+plot_stl_decomposition(
+  ts=area.ts.daily$North,
+  main=paste("North - Daily STL Decomposition")
+)
+```
+
+```{r stl daily decomposition, fig.width=6, fig.height=5}
+plot_stl_decomposition(
+  ts=area.ts.daily$Center,
+  main=paste("Center - Daily STL Decomposition")
+)
+```
+
+```{r stl daily decomposition, fig.width=6, fig.height=5}
+plot_stl_decomposition(
+  ts=area.ts.daily$South,
+  main=paste("South - Daily STL Decomposition")
+)
 ```
 
 #### Weekly
-```{r stl weekly decomposition, fig.width=6, fig.height=5}
-for(area_name in names.area) {
-  
-  weekly <- area.ts.weekly[[area_name]]
-  
-  plot_stl_decomposition(
-    ts=weekly,
-    main=paste(area_name, "- Weekly STL Decomposition")
-  )
-}
+```{r stl daily decomposition, fig.width=6, fig.height=5}
+plot_stl_decomposition(
+  ts=area.ts.weekly$North,
+  main=paste("North - Weekly STL Decomposition")
+)
 ```
 
-#### Monthly
-```{r stl monthly decomposition, fig.width=6, fig.height=5}
-for(area_name in names.area) {
-  
-  monthly <- area.ts.monthly[[area_name]]
-  
-  plot_stl_decomposition(
-    ts=monthly,
-    main=paste(area_name, "- Monthly STL Decomposition")
-  )
-}
+```{r stl daily decomposition, fig.width=6, fig.height=5}
+plot_stl_decomposition(
+  ts=area.ts.weekly$Center,
+  main=paste("Center - Weekly STL Decomposition")
+)
 ```
 
-In general, the results are analogous to those of the moving average, showing a certain type of trend with a common pattern but slightly different behaviors in the three areas. Meanwhile, seasonality linked to the month is practically identical. As anticipated, in terms of contribution to the final observations, the trend and seasonality appear to have a nearly balanced influence, with the error component contributing proportionally less.
+```{r stl daily decomposition, fig.width=6, fig.height=5}
+plot_stl_decomposition(
+  ts=area.ts.weekly$South,
+  main=paste("South - Weekly STL Decomposition")
+)
+```
 
 ### STL - Component comparision
 
@@ -829,35 +881,12 @@ for(area_name in names.area) {
 
 The plot still shows important spikes right at lags that are multiple of seven, meaning that the weekly dependence was not eliminated.
 
-### Monthly intercation
-
-The previous approach has likely proven to be unsuccessful as it solely considered a weekly seasonality without taking into account the monthly one, whereas both are likely present. We consider the weekly and monthly aspects together: for each time series, we produce $7\times 12$ plots that correspond to the trend of a certain day of the week in a specific month.
-
-
-```{r weeklymonthlyplot, fig.width=10, fig.height=22}
-# for(area_name in names.area) {
-# 
-#   df <- area.df[[area_name]]
-# 
-#   weeklymonthlyplot(
-#     df=df,
-#     main=paste(area_name, "- Weekly Monhtly plot")
-#   )
-# }
-```
-
-For each of the plots, the trend effect adheres to the general pattern that had been extracted from previous analyses. However, now the effect related to the day of the week is more evident, demonstrating an increase during the weekend, with an increase more pronounced in the summer months.
 
 ## Weekday and Weekend split
 
 There is evidence in the data of an increase in observations during the weekend. Let's try to create two separate time series for weekdays and weekends.
 
 ```{r weekday weekend split}
-region.ts.weeklydays <- lapply(
-  region.df, 
-  daily_df_to_weekly_ts_weekday_weekend
-)
-
 area.ts.weeklydays <- lapply(
   area.df, 
   daily_df_to_weekly_ts_weekday_weekend
@@ -869,44 +898,21 @@ area.ts.weeklydays <- lapply(
 Let's plot the two in the same plot to investigate the plots.
 
 ```{r weekday weekend plot, fig.width=6, fig.height=5}
+par(mfrow=c(3, 1))
 for(area_name in names.area) {
   
   weekly <- area.ts.weeklydays[[area_name]]
   
   plot_multiple_time_series(
-    ts_list = area.ts.weeklydays[[area_name]],
+    ts_list = weekly,
+    names   = names(weekly),
     colors  = list(weekday='steelblue1', weekend='tomato1'),
     main    = paste(area_name, "- Violations in Weekdays and Weekends"),
-    ylab    = "Daily violations"
+    ylab    = "Average daily violations"
   )
   
 }
-```
-
-The observations seem to closely follow the same trend, only at different scales due to the varying number of days. 
-
-### Violations per day comparison 
-
-Let's also investigate the number of observations per day.
-
-
-```{r weekday weekend pday plot, fig.width=4, fig.height=5}
-  
-for(area_name in names.area) {
-  
-  weekly <- area.ts.weeklydays[[area_name]]
-  
-  plot_multiple_time_series(
-    ts_list = list(
-      weekday = area.ts.weeklydays[[area_name]]$weekday / 5,
-      weekend = area.ts.weeklydays[[area_name]]$weekend / 2
-    ),
-    colors  = list(weekday='steelblue3', weekend='tomato3'),
-    main    = paste(area_name, "- Average per-day violations in Weekdays and Weekends"),
-    ylab    = "Average per-day violations"
-  )
-  
-}
+par(mfrow=c(1, 1))
 ```
 
 In general, the number of violations per day is higher during the weekend compared to weekdays, the trend is almost the same and the difference between the two tends to amplify during the summer months.
@@ -967,459 +973,425 @@ for(area_name in names.area) {
 par(mfrow=c(1,1))
 ```
 
-### ARIMA decomposition
+# 4. ARIMA Decomposition
 
-To conclude, let's compare their characterization in terms of ARIMA models using the `auto.arima` function. More detailed analyses regarding the ARIMA model description will be the focus of the next chapter.
+Train test split
+```{r}
+area.ts.daily.split  <- lapply(
+  area.ts.daily,
+  function(ts) {
+    split_ts(ts=ts, date_split=as.Date("2022-01-01"), train_test = TRUE)
+  }
+)
+fit.daily <- list()
+area.ts.weekly.split  <- lapply(
+  area.ts.weekly,
+  function(ts) {
+    split_ts(ts=ts, date_split=as.Date("2022-01-01"), train_test = TRUE)
+  }
+)
+fit.weekly <- list()
+```
+
+# Daily
 
 ```{r}
-if (FALSE) { ## Avoid recomputing
-  for(area_name in names.area) {
-    
-    fit.weekend <- auto.arima(area.ts.weeklydays[[area_name]]$weekend)
-    fit.weekday <- auto.arima(area.ts.weeklydays[[area_name]]$weekday)
-    
-    print(area_name)
-    print(paste("- Weekday:", arima_formula(fit=fit.weekday)))
-    print(paste("- Weekend:", arima_formula(fit=fit.weekend)))
-    print("")
-    
-  }
-} else {
-  cat(
-    "North\n",
-    "- Weekday: ARIMA(1,1,0) (1,1,0)[50]\n",
-    "- Weekend: ARIMA(1,1,0) (0,1,0)[50]\n",
-    "\n",
-    "Center\n",
-    "- Weekday: ARIMA(3,1,0) (1,1,0)[50]\n",
-    "- Weekend: ARIMA(0,1,2) (1,1,0)[50]\n",
-    "\n",
-    "South\n",
-    "- Weekday: ARIMA(4,0,0) (1,1,0)[50]\n",
-    "- Weekend: ARIMA(2,0,2) (1,1,0)[50]\n",
-    "\n"
-  )
-}
+plot_multiple_time_series(
+  ts_list=area.ts.daily.split$Center,
+  names=names(area.ts.daily.split$Center),
+  colors=list(train="steelblue", test="orange2"),
+  main="North, daily - Train test split",
+  ylab=names.ylab$Daily,
+)
 ```
 
 
-The results are interesting because they seem to capture different aspects of the time series. The seasonal component is similar in all six time series, capturing a seasonality of $50$ weeks corresponding to an annual oscillation. While the northern component doesn't show significant differences, the other two have distinct expressions in terms of autoregressive and moving average components. The most noteworthy result is related to the central area, which exhibits an autoregressive part for weekdays and a completely different characterization with moving averages for the weekends.
-
-These findings suggest that, despite a strong linear correspondence in observations, the phenomena generating the observations in the two types may have very different natures. It's important to note that we are placing significant trust in the models calculated by `auto.arima` without inspecting them or performing any diagnostic checks.
-
-# 4. ARIMA Decomposition
-
-## North
-
-### Monthly
-
-#### ACF, PACF and fitting models 
-
 ```{r north monthly tsdisplay1, fig.width=8, fig.height=6}
 tsdisplay(
-  area.ts.monthly$North,
-  main = "North - Original time series",
-  ylab = "Monthly violations"
+  area.ts.daily.split$Center$train,
+  main = "Center - Original time series",
+  ylab = names.ylab$Daily
 )
 ```
 
 ```{r north monthly fit1}
-fit.north.monthly <- list()
-fit.north.monthly$fit1 <- Arima(
-  area.ts.monthly$North, 
-  order=c(2, 0, 1)
+fit.daily$Center <- list()
+fit.daily$Center$fit1 <- Arima(
+  area.ts.daily.split$Center$train, 
+  order=c(4, 0, 2)
 )
-summary(fit.north.monthly$fit1)
+summary(fit.daily$Center$fit1)
 ```
 
 ```{r north monthly tsdisplay2, fig.width=8, fig.height=6}
 tsdisplay(
-  diff(area.ts.monthly$North, 1),
-  main = "North - First order differencing",
-  ylab = "Monthly violations"
+  diff(area.ts.daily.split$Center$train, 1),
+  main = "Center - First order differencing",
+  ylab = paste(names.ylab$Daily, "- Diff(1)"),
+  lag.max = 70
 )
 ```
 
-```{r north monthly fit2}
-fit.north.monthly$fit2 <- Arima(
-  area.ts.monthly$North, 
-  order=c(4, 1, 1)
+```{r north monthly fit1}
+fit.daily$Center$fit2 <- Arima(
+  area.ts.daily.split$Center$train, 
+  order=c(3, 1, 2)
 )
-summary(fit.north.monthly$fit2)
+summary(fit.daily$Center$fit2)
 ```
 
 ```{r north monthly tsdisplay3, fig.width=8, fig.height=6}
 tsdisplay(
-  diff(area.ts.monthly$North, monthly.freq),
-  main = "North - Monthly order differencing",
-  ylab = "Monthly violations"
+  diff(area.ts.daily.split$Center$train, as.integer(daily.freq)),
+  main = "Center - Daily order differencing",
+  ylab = paste(names.ylab$Daily, "- Diff(", as.integer(daily.freq), ")", sep=""),
+  lag.max = 70
 )
-```
-
-```{r north monthly fit3}
-fit.north.monthly$fit3 <- Arima(
-  area.ts.monthly$North, 
-  order=c(1, 0, 0),
-  seasonal=list(order=c(1, 0, 0), period=monthly.freq)
-)
-summary(fit.north.monthly$fit3)
 ```
 
 ```{r north monthly tsdisplay4, fig.width=8, fig.height=6}
 tsdisplay(
-  diff(diff(area.ts.monthly$North, monthly.freq), 1),
-  main = "North - Monthly plus first order differencing",
-  ylab = "Monthly violations"
+  diff(diff(area.ts.daily.split$Center$train, as.integer(daily.freq)), 1),
+  main = "Center - Daily order differencing",
+  ylab = paste(names.ylab$Daily, "- Diff(", as.integer(daily.freq), ", 1)", sep=""),
+  lag.max = 70
 )
 ```
 
-```{r north monthly fit4}
-fit.north.monthly$fit4 <- Arima(
-  area.ts.monthly$North, 
-  order=c(1, 1, 0),
-  seasonal=list(order=c(1, 1, 0), period=monthly.freq)
-)
-summary(fit.north.monthly$fit4)
-```
 
 ```{r north monthly autofit}
-fit.north.monthly$fit5 <- auto.arima(
-  area.ts.monthly$North,
-  ic="bic",
-  trace=TRUE
+# fit.daily$Center$auto <- auto.arima(
+#   area.ts.daily.split$Center$train,
+#   trace=TRUE,
+#   ic="aicc"
+# )
+fit.weekly$Center$auto <- Arima(
+  area.ts.daily.split$Center$train,
+  order=c(5, 1, 1)
 )
+
+summary(fit.daily$Center$auto)
 ```
 
 #### Best fit selection
 
 ```{r north monthly best fit}
-fit.north.monthly$best <- arima_selection(
-  fit_list = fit.north.monthly,
-  criteria = 'bic'
+fit.daily$Center$best <- arima_fit_selection(
+  fit_list = fit.daily$Center,
+  criteria = 'AICc'
 )
-fit.north.monthly$best
 ```
 
 ```{r north monthly residuals diagnostic, fig.width=8, fig.height=6}
-tsdiag(fit.north.monthly$best)
+tsdiag(fit.daily$Center$best)
 ```
 
-```{r north monthly forecast, fig.width=8, fig.height=6}
-plot(forecast(fit.north.monthly$best, h=2*monthly.freq))
-```
-
-#### Forecasting on test set
 
 ```{r north monthly test forecast, fig.width=8, fig.height=6}
-for(date_str in c("2022-01-01", "2022-06-01", "2022-09-01")) {
-  
-  date <- as.Date(date_str)
-  
-  errors <- train_test_model(
-    ts=area.ts.monthly$North,
-    date_split=date,
-    arima_order=arimaorder(fit.north.monthly$best),
-    freq_type='monthly',
-    main=paste('North - Monthly prediction after', date),
-    ylab="Monthly violations"
-  )
+par(mfrow=c(2, 2))
 
-  cat(
-    "Errors for ", date, "prediction:\n",
-    "MAE:  ", errors$mae,  "\n",
-    "MPE:  ", errors$mpe,  "\n",
-    "MSE:  ", errors$mse,  "\n",
-    "RMSE: ", errors$rmse, "\n"
-  )
-  
-}
+split_dates <- list(
+  as.Date("2022-01-01"),
+  as.Date("2022-06-01"),
+  as.Date("2022-09-01"),
+  as.Date("2022-12-01")
+)
+
+errors <- model_evaluation_multiple(
+  ts=area.ts.daily$Center,
+  model=fit.daily$Center$best,
+  split_dates=split_dates,
+  main="Prediction until",
+  ylab=names.ylab$Daily
+)
+par(mfrow=c(1, 1))
+print(errors)
 ```
+
+```{r}
+single_prediction <- model_evaluate_single_prediction(
+  ts=area.ts.daily$Center,
+  model=fit.daily$Center$best,
+  date_start=as.Date("2022-01-01"), # first monday
+  date_end=as.Date("2022-12-31"),
+  freq_type="daily",
+  main="aa",
+  ylab="bb"
+)
+```
+
+```{r}
+errors_analysis(
+  pred_ts = single_prediction,
+  error_type = "RMSE",
+  k=15,
+  freq_type = "daily",
+  start_date=as.Date("2022-01-03"),
+  main="AA",
+  ylab="BB"
+)
+```
+
+# Weekly
+
+Train test split
+```{r}
+plot_multiple_time_series(
+  ts_list=area.ts.weekly.split$Center,
+  names=names(area.ts.weekly.split$Center),
+  colors=list(train="steelblue", test="orange2"),
+  main="North, weekly - Train test split",
+  ylab=names.ylab$Weekly,
+)
+```
+
+
+```{r north monthly tsdisplay1, fig.width=8, fig.height=6}
+tsdisplay(
+  area.ts.weekly.split$Center$train,
+  main = "Center - Original time series",
+  ylab = names.ylab$Weekly
+)
+```
+
+```{r north monthly fit1}
+fit.weekly <- list()
+fit.weekly$Center <- list()
+fit.weekly$Center$fit_orig <- Arima(
+  area.ts.weekly.split$Center$train, 
+  order=c(5, 0, 0)
+)
+summary(fit.weekly$Center$fit_orig)
+```
+
+```{r north monthly tsdisplay2, fig.width=8, fig.height=6}
+tsdisplay(
+  diff(area.ts.weekly.split$Center$train, 1),
+  main = "Center - First order differencing",
+  ylab = paste(names.ylab$Weekly, "- Diff(1)"),
+  lag.max = 70
+)
+```
+
+
+```{r north monthly tsdisplay3, fig.width=8, fig.height=6}
+tsdisplay(
+  diff(area.ts.weekly.split$Center$train, weekly.freq),
+  main = "Center - Weekly order differencing",
+  ylab = paste(names.ylab$Weekly, "- Diff(", weekly.freq, ")", sep=""),
+  lag.max = 70
+)
+```
+
+```{r north monthly tsdisplay4, fig.width=8, fig.height=6}
+tsdisplay(
+  diff(diff(area.ts.weekly.split$Center$train, weekly.freq), 1),
+  main = "Center - Weekly order differencing plus fist order differencing",
+  ylab = paste(names.ylab$Weekly, "- Diff(", weekly.freq, ", 1)", sep=""),
+  lag.max = 70
+)
+```
+
+```{r north monthly fit4}
+fit.weekly$Center$seasonal <- Arima(
+  area.ts.weekly.split$Center$train, 
+  order=c(0, 1, 1),
+  seasonal=list(order=c(0, 1, 1), period=weekly.freq)
+)
+summary(fit.weekly$Center$seasonal)
+```
+
+```{r north monthly autofit}
+# fit.weekly$Center$auto <- auto.arima(
+#   area.ts.weekly.split$Center$train,
+#   trace=TRUE,
+#   ic="aicc"
+# )
+fit.weekly$Center$auto <- Arima(
+  area.ts.weekly.split$Center$train, 
+  order=c(1, 1, 0),
+  seasonal=list(order=c(1, 1, 0), period=weekly.freq)
+)
+
+summary(fit.weekly$Center$auto)
+```
+
+#### Best fit selection
+
+```{r north monthly best fit}
+fit.weekly$Center$best <- arima_fit_selection(
+  fit_list = fit.weekly$Center,
+  criteria = 'AICc'
+)
+```
+
+```{r north monthly residuals diagnostic, fig.width=8, fig.height=6}
+tsdiag(fit.weekly$Center$best)
+```
+
+
+```{r north monthly test forecast, fig.width=8, fig.height=6}
+par(mfrow=c(2, 2))
+
+split_dates <- list(
+  as.Date("2022-01-01"),
+  as.Date("2022-06-01"),
+  as.Date("2022-09-01"),
+  as.Date("2022-12-01")
+)
+
+errors <- model_evaluation_multiple(
+  ts=area.ts.weekly$Center,
+  model=fit.weekly$Center$best,
+  split_dates=split_dates,
+  main="Prediction until",
+  ylab=names.ylab$Weekly
+)
+par(mfrow=c(1, 1))
+print(errors)
+```
+
+```{r}
+single_prediction <- model_evaluate_single_prediction(
+  ts=area.ts.weekly$Center,
+  model=fit.weekly$Center$best,
+  date_start=as.Date("2022-01-03"), # first monday
+  date_end=as.Date("2022-12-31"),
+  freq_type="weekly",
+  main="aa",
+  ylab="bb"
+)
+```
+
+```{r}
+errors_analysis(
+  pred_ts = single_prediction,
+  error_type = "RMSE",
+  k=5,
+  freq_type = "weekly",
+  start_date=as.Date("2022-01-03"),
+  main="AA",
+  ylab="BB"
+)
+```
+
+
+# Dynamic regression
 
 ### Weekly
 
-#### ACF, PACF and fitting models 
-
-```{r north weekly tsdisplay1, fig.width=8, fig.height=6}
-tsdisplay(
-  area.ts.weekly$North,
-  main = "North - Original time series",
-  ylab = "Weekly violations"
+```{r}
+ccf(
+  y=as.numeric(area.ts.weekly$Center), 
+  x=as.numeric(area.ts.weekly$North),
+  lag.max = 100
+)
+ccf(
+  x=as.numeric(area.ts.weekly$Center),
+  y=as.numeric(area.ts.weekly$South), 
+  lag.max = 100
 )
 ```
-
-```{r north weekly fit1}
-fit.north.weekly <- list()
-fit.north.weekly$fit1 <- Arima(
-  area.ts.weekly$North, 
-  order=c(1, 0, 0)
-)
-summary(fit.north.weekly$fit1)
-```
-
-```{r north weekly tsdisplay2, fig.width=8, fig.height=6}
-tsdisplay(
-  diff(area.ts.weekly$North, 1),
-  main = "North - First order differencing",
-  ylab = "Weekly violations"
-)
-```
-
-```{r north weekly fit2}
-fit.north.weekly$fit2 <- Arima(
-  area.ts.weekly$North, 
-  order=c(0, 1, 1)
-)
-summary(fit.north.weekly$fit2)
-```
-
-```{r north weekly tsdisplay3, fig.width=8, fig.height=6}
-tsdisplay(
-  diff(area.ts.weekly$North, weekly.freq),
-  main = "North - Weekly order differencing",
-  ylab = "Weekly violations"
-)
-```
-
-```{r north weekly fit3}
-fit.north.weekly$fit3 <- Arima(
-  area.ts.weekly$North, 
-  order=c(1, 0, 0),
-  seasonal=list(order=c(2, 0, 0), period=weekly.freq)
-)
-summary(fit.north.weekly$fit3)
-```
-
-```{r north weekly tsdisplay4, fig.width=8, fig.height=6}
-tsdisplay(
-  diff(diff(area.ts.weekly$North, weekly.freq), 1),
-  main = "North - Weekly plus first order differencing",
-  ylab = "Weekly violations"
-)
-```
-
-```{r north weekly fit4}
-fit.north.weekly$fit4 <- Arima(
-  area.ts.weekly$North, 
-  order=c(2, 1, 0),
-  seasonal=list(order=c(1, 1, 0), period=weekly.freq)
-)
-summary(fit.north.weekly$fit4)
-```
-
-```{r north weekly autofit}
-fit.north.weekly$fit5 <- auto.arima(
-  area.ts.weekly$North,
-  ic="bic",
-  trace=TRUE
-)
-```
-
-#### Best fit selection
-
-```{r north weekly best fit}
-fit.north.weekly$best <- arima_selection(
-  fit_list = fit.north.weekly,
-  criteria = 'bic'
-)
-fit.north.weekly$best
-```
-
-```{r north weekly residuals diagnostic, fig.width=8, fig.height=6}
-tsdiag(fit.north.weekly$best)
-```
-
-```{r north weekly forecast, fig.width=8, fig.height=6}
-plot(forecast(fit.north.weekly$best, h=2*weekly.freq))
-```
-
-#### Forecasting on test set
-
-```{r north weekly test forecast, fig.width=8, fig.height=6}
-for(date_str in c("2022-01-01", "2022-06-01", "2022-09-01")) {
-  
-  date <- as.Date(date_str)
-  
-  errors <- train_test_model(
-    ts=area.ts.weekly$North,
-    date_split=date,
-    arima_order=arimaorder(fit.north.weekly$best),
-    freq_type='weekly',
-    main=paste('North - Weekly prediction after', date),
-    ylab="Weekly violations"
-  )
-
-  cat(
-    "Errors for ", date, "prediction:\n",
-    "MAE:  ", errors$mae,  "\n",
-    "MPE:  ", errors$mpe,  "\n",
-    "MSE:  ", errors$mse,  "\n",
-    "RMSE: ", errors$rmse, "\n"
-  )
-  
-}
-```
-
 
 ### Daily
-
-#### ACF, PACF and fitting models 
-
-```{r north daily tsdisplay1, fig.width=8, fig.height=6}
-tsdisplay(
-  area.ts.daily$North,
-  main = "North - Original time series",
-  ylab = "Daily violations"
+```{r}
+ccf(
+  y=as.numeric(area.ts.daily$Center), 
+  x=as.numeric(area.ts.daily$North),
+  lag.max = 100
+)
+ccf(
+  x=as.numeric(area.ts.daily$Center),
+  y=as.numeric(area.ts.daily$South), 
+  lag.max = 100
 )
 ```
 
-```{r north daily fit1}
-fit.north.daily <- list()
-fit.north.daily$fit1 <- Arima(
-  area.ts.daily$North, 
-  order=c(7, 0, 0)
+### Linear
+```{r}
+plot(
+  x=as.numeric(area.ts.weekly$North),
+  y=as.numeric(area.ts.weekly$Center)
 )
-summary(fit.north.daily$fit1)
+grid()
+lm1 <- lm(area.ts.weekly$Center ~ area.ts.weekly$North)
+summary(lm1)
+abline(lm1,  col = "orangered", lwd = 2, lty="dashed")
+checkresiduals(resid(lm1))
 ```
 
-```{r north daily tsdisplay2, fig.width=8, fig.height=6}
-tsdisplay(
-  diff(area.ts.daily$North, 1),
-  main = "North - First order differencing",
-  ylab = "Daily violations"
+```{r}
+plot(
+  x=as.numeric(area.ts.weekly$South),
+  y=as.numeric(area.ts.weekly$Center)
 )
+grid()
+lm2 <- lm(area.ts.weekly$Center ~ area.ts.weekly$South)
+summary(lm2)
+abline(lm2,  col = "orangered", lwd = 2, lty="dashed")
+checkresiduals(resid(lm2))
 ```
 
-```{r north daily fit2}
-fit.north.daily$fit2 <- Arima(
-  area.ts.daily$North, 
-  order=c(7, 1, 0)
-)
-summary(fit.north.daily$fit2)
+```{r}
+lm3 <- lm(area.ts.weekly$Center ~ area.ts.weekly$North + area.ts.weekly$South)
+summary(lm3)
+checkresiduals(resid(lm3))
 ```
 
-```{r north daily tsdisplay3, fig.width=8, fig.height=6}
-tsdisplay(
-  diff(area.ts.daily$North, as.integer(daily.freq)),
-  main = "North - Daily order differencing",
-  ylab = "Daily violations"
+```{r}
+fit1 <- auto.arima(
+  area.ts.weekly.split$Center$train,
+  xreg=area.ts.weekly.split$North$train
 )
+summary(fit1)
 ```
 
-
-```{r north daily tsdisplay4, fig.width=8, fig.height=6}
-tsdisplay(
-  diff(diff(area.ts.daily$North, as.integer(daily.freq)), 1),
-  main = "North - Daily plus first order differencing",
-  ylab = "Daily violations"
+```{r}
+fit2 <- auto.arima(
+  area.ts.weekly.split$Center$train,
+  xreg=area.ts.weekly.split$South$train
 )
+summary(fit2)
 ```
 
-```{r north daily fourier fits}
-fit.north.daily$fit3 <- Arima(
-  area.ts.daily$North, 
-  order=c(2,0,0), 
-  xreg=fourier(area.ts.daily$North, K=4)
+```{r}
+aaa
+models <- list(
+  mod1 = list(fit=fit1, xreg=area.ts.weekly.split$North$test, main="AA", col="red"),
+  mod2 = list(fit=fit2, xreg=area.ts.weekly.split$South$test, main="BB", col="green"),
+  mod3 = list(fit=fit.weekly$Center$best, h=length(area.ts.weekly.split$South$test), main="CC", col="blue"
 )
-summary(fit.north.daily$fit3)
-```
-
-```{r north daily autofit}
-fit.north.daily$fit4 <- auto.arima(
-  area.ts.daily$North,
-  ic="bic",
-  trace=TRUE
 )
 
-fit.north.daily$fit5 <- auto.arima(
-  area.ts.daily$North,
-  seasonal=FALSE,
-  xreg=fourier(area.ts.daily$North, K=4),
-  ic="bic",
-  trace=TRUE
+compare_models_ic(
+  models=models,
+  ylab=names.ylab$Weekly
 )
+
 ```
 
-#### Best fit selection
-
-```{r north daily best fit}
-fit.north.daily$best <- arima_selection(
-  fit_list = fit.north.daily,
-  criteria = 'bic'
+```{r}
+compare_models_prediction_error(
+  models=models,
+  train=area.ts.weekly.split$Center$train,
+  test=area.ts.weekly.split$Center$test,
+  main="AA",
+  ylab="bb"
 )
-fit.north.daily$best
-```
 
-```{r north daily residuals diagnostic, fig.width=8, fig.height=6}
-tsdiag(fit.north.daily$best)
-tsdiag(fit.north.daily$fit5)
-```
-
-```{r north daily forecast, fig.width=8, fig.height=6}
-plot(forecast(fit.north.daily$best, h=as.integer(daily.freq)))
-```
-
-```{r  north daily forecast fuorier, fig.width=8, fig.height=6}
-plot(forecast(
-  fit.north.daily$fit5,
-  h=as.integer(daily.freq),
-  xreg=fourier(area.ts.daily$North, K=4, h=as.integer(daily.freq)))
+compare_models_prediction_error(
+  models=models,
+  train=area.ts.weekly.split$Center$train,
+  test=area.ts.weekly.split$Center$test,
+  main="AA",
+  ylab="bb",
+  plot_train = FALSE
 )
 ```
 
 
-#### Forecasting on test set
 
-```{r north daily test forecast, fig.width=8, fig.height=6}
 
-for(date_str in c("2022-01-01", "2022-06-01", "2022-09-01")) {
-  
-  date <- as.Date(date_str)
-  
-  errors <- train_test_model(
-    ts=area.ts.daily$North,
-    date_split=date,
-    arima_order=arimaorder(fit.north.daily$best),
-    freq_type='daily',
-    main=paste('North - Weekly prediction after', date),
-    ylab="Weekly violations"
-  )
 
-  cat(
-    "Errors for ", date, "prediction:\n",
-    "MAE:  ", errors$mae,  "\n",
-    "MPE:  ", errors$mpe,  "\n",
-    "MSE:  ", errors$mse,  "\n",
-    "RMSE: ", errors$rmse, "\n"
-  )
-  
-}
-```
 
-```{r north daily test forecast fuorier, fig.width=8, fig.height=6}
 
-for(date_str in c("2022-01-01", "2022-06-01", "2022-09-01")) {
-  
-  date <- as.Date(date_str)
-  
-  errors <- train_test_model(
-    ts=area.ts.daily$North,
-    date_split=date,
-    arima_order=arimaorder(fit.north.daily$fit5),
-    fourier_ = 4,
-    freq_type='daily',
-    main=paste('North - Weekly prediction after', date),
-    ylab="Weekly violations"
-  )
-  
-  length(fourier(area.ts.daily$North, K=4, h=365))
-
-  cat(
-    "Errors for ", date, "prediction:\n",
-    "MAE:  ", errors$mae,  "\n",
-    "MPE:  ", errors$mpe,  "\n",
-    "MSE:  ", errors$mse,  "\n",
-    "RMSE: ", errors$rmse, "\n"
-  )
-  
-}
-```

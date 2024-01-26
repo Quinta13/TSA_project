@@ -14,7 +14,7 @@ monthly.freq <- 12      # Monthly frequency
 names.freq <- c("Daily", "Weekly")
 names.ylab <- list(
   Daily="Daily violations", 
-  Weekly="Avg day violations per week"#),
+  Weekly="Avg daily violations per week"#),
   #monthly="Average daily violations (per month)")
 )
 
