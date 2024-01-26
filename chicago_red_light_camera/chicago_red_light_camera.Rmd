@@ -117,7 +117,7 @@ plot_ts_grid(
 Different degreees of magnitutes, let's plot together the data
 
 ```{r}
-plot_multiple_time_series(
+plot_multiple_ts(
   ts_list=region.ts.daily,
   colors=region.colors,
   names=unlist(names.regions),
@@ -129,25 +129,24 @@ plot_multiple_time_series(
 Confusing, but from the two we can retrieve two particular critical observations
 
 ```{r}
-get_observation_over_threshold(
+above_threshold(
   ts=region.ts.daily$West,
   threshold=700
 )
 
-get_observation_over_threshold(
+above_threshold(
   ts=region.ts.daily$West,
   threshold = 120,
   upper=FALSE
 ) 
 
-get_observation_over_threshold(
+above_threshold(
   ts=region.ts.daily$West,
   threshold = 110,
   upper=FALSE
 ) 
 
-
-get_observation_over_threshold(
+above_threshold(
   ts=region.ts.daily$FarSouthEast,
   threshold=300
 )
@@ -158,7 +157,7 @@ First one is about the BLM protest
 <br>
 ```{r blm protest,  fig.cap="Protesters destroy police vehicles , on May 30, 2020 during a protest against the death of George Floyd (Photo by Jim Vondruska)", out.width = "400px", echo=FALSE, include=TRUE}
 #https://www.nbcchicago.com/news/local/20-stunning-photos-show-how-protests-unrest-unfolded-in-chicago/2281065/
-  knitr::include_graphics("https://media.nbcchicago.com/2019/09/GettyImages-1216502225.jpg?quality=85&strip=all&fit=8660%2C5773&w=775&h=436&crop=0")
+knitr::include_graphics("https://media.nbcchicago.com/2019/09/GettyImages-1216502225.jpg?quality=85&strip=all&fit=8660%2C5773&w=775&h=436&crop=0")
 ```
 
 The second ones corresponds to the very same date for which we have NAN. Nothing is found of the web, possible something didn't work so we can't rely on this observations. We won't work with regions but we must take care of the propagation of this aspect.
@@ -170,7 +169,6 @@ Nothing for the 13 August 2013, only swedish house mafia, local to that place, n
 https://www.weather.gov/lot/2015_Feb01_Snow
 
 
-
 ### Weekly 
 
 work at weekly level+ 53 week
@@ -180,23 +178,6 @@ region.ts.weekly <- lapply(
   region.df,
   daily_df_to_weekly_ts
 )
-
-length(region.ts.weekly$Central)
-```
-
-```{r}
-# Your DataFrame df
-df <- data.frame(A = c(1, 2, 3, 4, 5))
-
-# Define your function f(a)
-f <- function(a) {
-  # Your element-wise operation here
-  result <- a * 2  # Replace this with your actual function
-  return(result)
-}
-
-# Apply the function element-wise and create a new column B
-df$B <- f(df$A)
 ```
 
 
@@ -214,7 +195,7 @@ plot_ts_grid(
 One point as a summary of seven, smoother reduce variablity over a month. Since can be measliding let's try to plot them together
 
 ```{r}
-plot_multiple_time_series(
+plot_multiple_ts(
   ts_list=region.ts.weekly,
   colors=region.colors,
   names=unlist(names.regions),
@@ -271,7 +252,6 @@ summary(violations.area.df)
 one missing, add 0
 
 ```{r}
-
 # Add missing observation
 violations.area.df <- rbind(
   violations.area.df, 
@@ -327,7 +307,7 @@ plot_ts_grid(
 all in one
 
 ```{r}
-plot_multiple_time_series(
+plot_multiple_ts(
   ts_list=area.ts.daily,
   names=names.area,
   colors=area.colors,
@@ -360,7 +340,7 @@ plot_ts_grid(
 all in one
 
 ```{r}
-plot_multiple_time_series(
+plot_multiple_ts(
   ts_list=area.ts.weekly,
   names=names.area,
   colors=area.colors,
@@ -621,7 +601,7 @@ for(area_name in names.area) {
   
   deseasonal.trend = deseasoning(
     ts=daily, 
-    as.integer(daily.freq)
+    as.integer(freq$daily)
   )
   
   lines(
@@ -655,7 +635,7 @@ for(area_name in names.area) {
   
   deseasonal.trend = deseasoning(
     ts=weekly, 
-    freq=weekly.freq
+    freq=freq$weekly
   )
   
   lines(
@@ -898,21 +878,13 @@ area.ts.weeklydays <- lapply(
 Let's plot the two in the same plot to investigate the plots.
 
 ```{r weekday weekend plot, fig.width=6, fig.height=5}
-par(mfrow=c(3, 1))
-for(area_name in names.area) {
-  
-  weekly <- area.ts.weeklydays[[area_name]]
-  
-  plot_multiple_time_series(
-    ts_list = weekly,
-    names   = names(weekly),
-    colors  = list(weekday='steelblue1', weekend='tomato1'),
-    main    = paste(area_name, "- Violations in Weekdays and Weekends"),
-    ylab    = "Average daily violations"
-  )
-  
-}
-par(mfrow=c(1, 1))
+plot_multiple_ts(
+  ts_list = area.ts.weeklydays$Center,
+  names   = names(area.ts.weeklydays$Center),
+  colors  = list(weekday='steelblue1', weekend='tomato1'),
+  main    = paste("Center - Violations in Weekdays and Weekends"),
+  ylab    = "Average daily violations"
+)
 ```
 
 In general, the number of violations per day is higher during the weekend compared to weekdays, the trend is almost the same and the difference between the two tends to amplify during the summer months.
@@ -922,23 +894,13 @@ In general, the number of violations per day is higher during the weekend compar
 This fact can be visualized in a more formal manner by looking at the cross-correlation plot, which highlights a clear linear dependence.
 
 ```{r weekday weekend ccf, fig.width=9, fig.height=8}
-par(mfrow = c(length(area.ts.weeklydays), 1))
-
-for(area_name in names.area) {
-  
-  weekly <- area.ts.weeklydays[[area_name]]
-  
-  ccf(
-    x=as.numeric(weekly$weekday),
-    y=as.numeric(weekly$weekday),
-    lag.max = 50,
-    main=paste(area_name ,"- Weekdays and Weekend Cross Correlogram"),
-    ylab="CCF"
-  )
-  
-}
-
-par(mfrow=c(1,1))
+ccf(
+  x=as.numeric(area.ts.weeklydays$Center$weekday),
+  y=as.numeric(area.ts.weeklydays$Center$weekday),
+  lag.max = 50,
+  main=paste("Center - Weekdays and Weekend Cross Correlogram"),
+  ylab="CCF"
+)
 ```
 
 ### Linear regression
@@ -946,31 +908,22 @@ par(mfrow=c(1,1))
 The linear relationship is so strong that the dependence between the two can be easily modeled by a linear regression.
 
 ```{r weekday weekend linear regression, fig.width=7, fig.height=7}
-par(mfrow = c(length(area.ts.weeklydays), 1))
 
-for(area_name in names.area) {
+violations.weekday <- as.numeric(area.ts.weeklydays$Center$weekday)
+violations.weekend <- as.numeric(area.ts.weeklydays$Center$weekend)
   
-  weekly <- area.ts.weeklydays[[area_name]]
-  
-  violations.weekday <- as.numeric(weekly$weekday)
-  violations.weekend <- as.numeric(weekly$weekend)
-  
-  plot(
-    x=violations.weekday,
-    y=violations.weekend,
-    pch=16, col="steelblue",
-    main=paste(area_name, "- Weekdays VS Weekend violations"),
-    xlab="Weekly violations on weekdays",
-    ylab="Weekly violations on weekdays",
-  )
-  grid()
-  
-  fit <- lm(violations.weekend ~ violations.weekday)
-  abline(fit,  col = "orangered", lwd = 2, lty="dashed")
-  
-}
+plot(
+  x=area.ts.weeklydays$Center$weekday,
+  y=area.ts.weeklydays$Center$weekend,
+  pch=16, col="steelblue",
+  main=paste("Center - Weekdays VS Weekend violations"),
+  xlab="Weekly violations on weekdays",
+  ylab="Weekly violations on weekdays",
+)
+grid()
 
-par(mfrow=c(1,1))
+fit <- lm(violations.weekend ~ violations.weekday)
+abline(fit,  col = "orange2", lwd = 2, lty="dashed")
 ```
 
 # 4. ARIMA Decomposition
@@ -996,7 +949,7 @@ fit.weekly <- list()
 # Daily
 
 ```{r}
-plot_multiple_time_series(
+plot_multiple_ts(
   ts_list=area.ts.daily.split$Center,
   names=names(area.ts.daily.split$Center),
   colors=list(train="steelblue", test="orange2"),
@@ -1042,18 +995,18 @@ summary(fit.daily$Center$fit2)
 
 ```{r north monthly tsdisplay3, fig.width=8, fig.height=6}
 tsdisplay(
-  diff(area.ts.daily.split$Center$train, as.integer(daily.freq)),
+  diff(area.ts.daily.split$Center$train, as.integer(freq$daily)),
   main = "Center - Daily order differencing",
-  ylab = paste(names.ylab$Daily, "- Diff(", as.integer(daily.freq), ")", sep=""),
+  ylab = paste(names.ylab$Daily, "- Diff(", as.integer(freq$daily), ")", sep=""),
   lag.max = 70
 )
 ```
 
 ```{r north monthly tsdisplay4, fig.width=8, fig.height=6}
 tsdisplay(
-  diff(diff(area.ts.daily.split$Center$train, as.integer(daily.freq)), 1),
+  diff(diff(area.ts.daily.split$Center$train, as.integer(freq$daily)), 1),
   main = "Center - Daily order differencing",
-  ylab = paste(names.ylab$Daily, "- Diff(", as.integer(daily.freq), ", 1)", sep=""),
+  ylab = paste(names.ylab$Daily, "- Diff(", as.integer(freq$daily), ", 1)", sep=""),
   lag.max = 70
 )
 ```
@@ -1065,7 +1018,7 @@ tsdisplay(
 #   trace=TRUE,
 #   ic="aicc"
 # )
-fit.weekly$Center$auto <- Arima(
+fit.daily$Center$auto <- Arima(
   area.ts.daily.split$Center$train,
   order=c(5, 1, 1)
 )
@@ -1097,7 +1050,7 @@ split_dates <- list(
   as.Date("2022-12-01")
 )
 
-errors <- model_evaluation_multiple(
+errors <- model_multiple_evaluation(
   ts=area.ts.daily$Center,
   model=fit.daily$Center$best,
   split_dates=split_dates,
@@ -1109,7 +1062,7 @@ print(errors)
 ```
 
 ```{r}
-single_prediction <- model_evaluate_single_prediction(
+single_prediction <- model_one_step_ahead_evaluation(
   ts=area.ts.daily$Center,
   model=fit.daily$Center$best,
   date_start=as.Date("2022-01-01"), # first monday
@@ -1136,7 +1089,7 @@ errors_analysis(
 
 Train test split
 ```{r}
-plot_multiple_time_series(
+plot_multiple_ts(
   ts_list=area.ts.weekly.split$Center,
   names=names(area.ts.weekly.split$Center),
   colors=list(train="steelblue", test="orange2"),
@@ -1176,18 +1129,18 @@ tsdisplay(
 
 ```{r north monthly tsdisplay3, fig.width=8, fig.height=6}
 tsdisplay(
-  diff(area.ts.weekly.split$Center$train, weekly.freq),
+  diff(area.ts.weekly.split$Center$train, freq$weekly),
   main = "Center - Weekly order differencing",
-  ylab = paste(names.ylab$Weekly, "- Diff(", weekly.freq, ")", sep=""),
+  ylab = paste(names.ylab$Weekly, "- Diff(", freq$weekly, ")", sep=""),
   lag.max = 70
 )
 ```
 
 ```{r north monthly tsdisplay4, fig.width=8, fig.height=6}
 tsdisplay(
-  diff(diff(area.ts.weekly.split$Center$train, weekly.freq), 1),
+  diff(diff(area.ts.weekly.split$Center$train, freq$weekly), 1),
   main = "Center - Weekly order differencing plus fist order differencing",
-  ylab = paste(names.ylab$Weekly, "- Diff(", weekly.freq, ", 1)", sep=""),
+  ylab = paste(names.ylab$Weekly, "- Diff(", freq$weekly, ", 1)", sep=""),
   lag.max = 70
 )
 ```
@@ -1196,7 +1149,7 @@ tsdisplay(
 fit.weekly$Center$seasonal <- Arima(
   area.ts.weekly.split$Center$train, 
   order=c(0, 1, 1),
-  seasonal=list(order=c(0, 1, 1), period=weekly.freq)
+  seasonal=list(order=c(0, 1, 1), period=freq$weekly)
 )
 summary(fit.weekly$Center$seasonal)
 ```
@@ -1210,7 +1163,7 @@ summary(fit.weekly$Center$seasonal)
 fit.weekly$Center$auto <- Arima(
   area.ts.weekly.split$Center$train, 
   order=c(1, 1, 0),
-  seasonal=list(order=c(1, 1, 0), period=weekly.freq)
+  seasonal=list(order=c(1, 1, 0), period=freq$weekly)
 )
 
 summary(fit.weekly$Center$auto)
@@ -1240,19 +1193,20 @@ split_dates <- list(
   as.Date("2022-12-01")
 )
 
-errors <- model_evaluation_multiple(
+errors <- model_multiple_evaluation(
   ts=area.ts.weekly$Center,
   model=fit.weekly$Center$best,
   split_dates=split_dates,
   main="Prediction until",
   ylab=names.ylab$Weekly
 )
+
 par(mfrow=c(1, 1))
 print(errors)
 ```
 
 ```{r}
-single_prediction <- model_evaluate_single_prediction(
+single_prediction <- model_one_step_ahead_evaluation(
   ts=area.ts.weekly$Center,
   model=fit.weekly$Center$best,
   date_start=as.Date("2022-01-03"), # first monday
@@ -1289,20 +1243,6 @@ ccf(
 ccf(
   x=as.numeric(area.ts.weekly$Center),
   y=as.numeric(area.ts.weekly$South), 
-  lag.max = 100
-)
-```
-
-### Daily
-```{r}
-ccf(
-  y=as.numeric(area.ts.daily$Center), 
-  x=as.numeric(area.ts.daily$North),
-  lag.max = 100
-)
-ccf(
-  x=as.numeric(area.ts.daily$Center),
-  y=as.numeric(area.ts.daily$South), 
   lag.max = 100
 )
 ```
@@ -1355,7 +1295,6 @@ summary(fit2)
 ```
 
 ```{r}
-aaa
 models <- list(
   mod1 = list(fit=fit1, xreg=area.ts.weekly.split$North$test, main="AA", col="red"),
   mod2 = list(fit=fit2, xreg=area.ts.weekly.split$South$test, main="BB", col="green"),
@@ -1363,7 +1302,7 @@ models <- list(
 )
 )
 
-compare_models_ic(
+model_comparison_ic(
   models=models,
   ylab=names.ylab$Weekly
 )
@@ -1371,7 +1310,7 @@ compare_models_ic(
 ```
 
 ```{r}
-compare_models_prediction_error(
+model_comparison_prediction(
   models=models,
   train=area.ts.weekly.split$Center$train,
   test=area.ts.weekly.split$Center$test,
@@ -1379,7 +1318,7 @@ compare_models_prediction_error(
   ylab="bb"
 )
 
-compare_models_prediction_error(
+model_comparison_prediction(
   models=models,
   train=area.ts.weekly.split$Center$train,
   test=area.ts.weekly.split$Center$test,

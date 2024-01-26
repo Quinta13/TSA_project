@@ -3,8 +3,8 @@
 # Date: 2024-01-26
 # Description: This file contains functions for applying smoothing and high pass filters and performing time series analysis.
 
-
 # --- Filtering ---
+
 #' Apply Filtering to Time Series
 #'
 #' This function applies a specified filter to a time series object.

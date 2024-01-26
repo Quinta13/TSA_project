@@ -1,11 +1,57 @@
 # File: plotting.R
 # Author: Sebastiano Quintavalle
 # Date: 2024-01-26
-# Description: the file contains visualization utils.
+# Description: The file contains plotting utilies functions.
 
 # --- Multiple TS ---
 
-#' Plot Multiple Time Series
+#' Plot Time Series in a Grid
+#'
+#' This function creates a grid of plots, where each plot displays a single time series
+#' from a list of time series objects. It allows for customizing the layout, colors,
+#' y-axis label, and main title of the entire plot.
+#'
+#' @param ts_list List of time series objects to be plotted.
+#' @param n_row Integer, the number of rows in the grid.
+#' @param names Character vector of names corresponding to each time series in \code{ts_list}.
+#' @param colors List of colors corresponding to each time series in \code{ts_list}.
+#' @param ylab Label for the y-axis.
+#' @param main Main title for the entire plot.
+#'
+#' @return Returns \code{NULL} as the result is a plot, and it's typically not
+#'         assigned to a variable.
+#'
+plot_ts_grid <- function(ts_list, n_row=1, names, colors, ylab, main) {
+  
+  # Set output parameters
+  par(
+    mfrow = c(n_row, ceiling(length(ts_list)/n_row)), 
+    mar   = c(4, 4, 2, 1), 
+    oma   = c(0, 0, 3, 0)
+  )
+  
+  # Plot each single time series
+  for (name in names) {
+    
+    plot(
+      ts_list[[name]],
+      main=name,
+      col=colors[[name]],
+      ylab=ylab
+    )
+    grid()
+    
+  }
+  
+  # Add a main title for the entire plot
+  mtext(main, line = 0, side = 3, outer = TRUE, cex = 1.5)
+  
+  # Reset the plotting parameters
+  par(mfrow = c(1, 1), oma = c(0, 0, 0, 0))
+  
+}
+
+#' Plot Multiple Time Series in a single plot
 #'
 #' This function plots multiple time series on the same graph with specified colors and legends.
 #'
@@ -15,7 +61,7 @@
 #' @param main Main title for the plot.
 #' @param ylab Label for the y-axis.
 #'
-plot_multiple_time_series <- function(ts_list, names, colors, main, ylab, lwd=1) {
+plot_multiple_ts <- function(ts_list, names, colors, main, ylab, lwd=1) {
   
   # Plot the first time series
   plot(
@@ -34,9 +80,10 @@ plot_multiple_time_series <- function(ts_list, names, colors, main, ylab, lwd=1)
   }
   
   # Add legend
-  legend("topleft",
-         legend=names,
-         lty=1, lwd=2, col=unlist(colors))
+  legend(
+    "topleft", legend=names,
+    lty=1, lwd=2, col=unlist(colors)
+  )
 }
   
 
@@ -87,33 +134,5 @@ weeklyplot <- function(df, main) {
   
   # Reset the plotting parameters
   par(mfrow = c(1, 1), oma = c(0, 0, 0, 0))
-}
-
-plot_ts_grid <- function(ts_list, n_row=1, names, colors, ylab, main) {
-  
-  par(
-    mfrow = c(n_row, ceiling(length(ts_list)/n_row)), 
-    mar   = c(4, 4, 2, 1), 
-    oma   = c(0, 0, 3, 0)
-  )
-  
-  for (name in names) {
-    
-    plot(
-      ts_list[[name]],
-      main=name,
-      col=colors[[name]],
-      ylab=ylab
-    )
-    grid()
-    
-  }
-  
-  # Add a main title for the entire plot
-  mtext(main, line = 0, side = 3, outer = TRUE, cex = 1.5)
-  
-  # Reset the plotting parameters
-  par(mfrow = c(1, 1), oma = c(0, 0, 0, 0))
-  
 }
 
