@@ -378,7 +378,7 @@ model_one_step_ahead_evaluation <- function(ts, model, date_start, date_end, fre
     ts_out[, "True"],
     main=main,
     ylab=ylab,
-    col="tomato",
+    col="orangered",
     ylim=combined_range
   )
   grid()
@@ -398,7 +398,7 @@ model_one_step_ahead_evaluation <- function(ts, model, date_start, date_end, fre
   )
   
   # True
-  lines(ts_out[, "True"], col="tomato", lwd=2)
+  lines(ts_out[, "True"], col="orangered", lwd=2)
   
   # Predicted
   lines(ts_out[, "Pred"], col="#2297e6", lwd=2)
@@ -407,7 +407,7 @@ model_one_step_ahead_evaluation <- function(ts, model, date_start, date_end, fre
   legend(
     "topleft",
     legend = c("True",      "Predicted", "80% CI",  "95% CI" ),
-    col    = c("tomato", "#2297e6",   "#b1b5ce", "#dbdbdf"),
+    col    = c("orangered", "#2297e6",   "#b1b5ce", "#dbdbdf"),
     lty    = c(1,           1,           1,         1        ),  
     lwd    = c(2,           2,           2,         2        ),
     cex = 0.8,
@@ -421,18 +421,19 @@ model_one_step_ahead_evaluation <- function(ts, model, date_start, date_end, fre
 #' Analyze Prediction Errors
 #'
 #' This function analyzes prediction errors from a time series prediction dataset.
-#' It plots the prediction errors, highlights the k-highest errors, and prints
+#' It plots the prediction errors, highlights the h-lowest and k-highest errors, and prints
 #' information about the dates and errors for better insight.
 #'
 #' @param pred_ts Time series object (\code{ts}) representing the prediction errors.
 #' @param error_type Character, the type of prediction error to analyze (e.g., "MAE", "RMSE").
 #' @param k Numeric, the number of highest errors to highlight.
+#' @param h Numeric, the number of lowest errors to highlight.
 #' @param start_date Date, the starting date for the analysis.
 #' @param freq_type Character, the frequency of the time series ("daily" or "weekly").
 #' @param main Character, the main title of the plot.
 #' @param ylab Character, the label for the y-axis of the plot.
 #'
-errors_analysis <- function(pred_ts, error_type, k, start_date, freq_type, main, ylab) {
+errors_analysis <- function(pred_ts, error_type, k, h, start_date, freq_type, main, ylab) {
   
   # Prediction error ts
   pred_ts_err <- pred_ts[, error_type]
@@ -446,19 +447,28 @@ errors_analysis <- function(pred_ts, error_type, k, start_date, freq_type, main,
   grid()
   
   # Retrieve indexes of k-highest errors
-  indices <- rev(tail(order(pred_ts_err), k))
+  indices_worst <- rev(tail(order(pred_ts_err), k))
+  indices_best <-  rev(head(order(pred_ts_err), h))
   
   # Highlight k-highest errors 
   points(
-    time(pred_ts_err)[indices],
-    pred_ts_err[indices],
+    time(pred_ts_err)[indices_worst],
+    pred_ts_err[indices_worst],
     pch=18,
     cex=2,
     col="orangered"
   )
+  points(
+    time(pred_ts_err)[indices_best],
+    pred_ts_err[indices_best],
+    pch=18,
+    cex=2,
+    col="green3"
+  )
   
   # Print the date referring to the k-highest dates
-  for(i in indices) {
+  print("Worst:")
+  for(i in indices_worst) {
     
     if(freq_type=="daily") {
       
@@ -475,7 +485,7 @@ errors_analysis <- function(pred_ts, error_type, k, start_date, freq_type, main,
       print(
         paste(
           "Week from ", date_week, " to ", date_week+6,
-          ": ", single_prediction[, "RMSE"][i], sep=""
+          ": ", pred_ts_err[i], sep=""
         )
       ) 
       
@@ -483,6 +493,38 @@ errors_analysis <- function(pred_ts, error_type, k, start_date, freq_type, main,
       
       stop(paste("Invalid freq_type: ", freq_type,". Choose one in {daily, weekly}", sep=""))
     
+    }
+    
+  }
+  
+  print("")
+  print("Best:")
+  # Print the date referring to the k-highest dates
+  for(i in indices_best) {
+    
+    if(freq_type=="daily") {
+      
+      print(
+        paste(
+          "Date: ", float_to_date(time(pred_ts_err)[i]),
+          " - ", error_type, ": ", pred_ts_err[i], sep=""
+        )
+      ) 
+      
+    } else if(freq_type=="weekly") {
+      
+      date_week<- as.Date("2022-01-03") + i * 7
+      print(
+        paste(
+          "Week from ", date_week, " to ", date_week+6,
+          ": ", pred_ts_err[i], sep=""
+        )
+      ) 
+      
+    } else {
+      
+      stop(paste("Invalid freq_type: ", freq_type,". Choose one in {daily, weekly}", sep=""))
+      
     }
     
   }
@@ -563,7 +605,7 @@ model_comparison_ic <- function(models, ylab) {
 #'
 #' @return Returns a dataframe with model names and corresponding values of MAE, MPE, MSE, and RMSE.
 #'
-model_comparison_prediction <- function(models, train, test, main, ylab, plot_train=TRUE) {
+model_comparison_prediction <- function(models, train, test, main, ylab, lwd=1, plot_train=TRUE) {
   
   # Dataframe for model prediction errors
   errors_df = data.frame(
@@ -609,10 +651,13 @@ model_comparison_prediction <- function(models, train, test, main, ylab, plot_tr
   cols$True = "steelblue"
   predicted$True <- test
   
+  lty <- c(rep('dashed', length(models)), 'solid')
+  
   # Add Train entry according to input flag
   if(plot_train) {
     predicted$Train <- train
     cols$Train <- "black"
+    lty <- NULL
   }
   
   # Plot ponit forecasts
@@ -621,7 +666,9 @@ model_comparison_prediction <- function(models, train, test, main, ylab, plot_tr
     names = names(predicted),
     colors=cols,
     main = main,
-    ylab=ylab
+    ylab=ylab,
+    lwd=lwd,
+    lty=lty
   )
   
   return(errors_df)

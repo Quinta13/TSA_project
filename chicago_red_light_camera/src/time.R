@@ -311,17 +311,24 @@ outliers_diagnostic <- function(ts, colors, main, ylab) {
     "topleft", 
     legend = c("Observed outlier", "Suggested replacement"), 
     pch = c(18, 18), 
-    col = c(colors$old, colors$new)
+    col = c(colors$old, colors$new),
+    cex = 0.6
   )
   
-  # Print outliers true vs. suggestion info
-  for(i in 1:length(times)) {
-    print(paste(
-      float_to_date(times[i]), 
-      "- old: ", old[i], 
-      ", new: ", new_[i])
-    )
+  # Create an empty dataframe
+  outliers_df <- data.frame(Date = character(), Old = numeric(), New = numeric())
+  
+  # Loop through the data and append to the dataframe
+  for (i in 1:length(times)) {
+    outliers_df <- rbind(outliers_df, data.frame(
+      Date = float_to_date(times[i]),
+      Old  = old[i],
+      New  = new_[i]
+    ))
   }
+  
+  # Print the resulting dataframe
+  print(outliers_df)
   
   return(outliers)
 

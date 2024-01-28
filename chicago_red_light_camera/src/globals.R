@@ -7,6 +7,7 @@
 
 # Dataset file (local path referred to the project root)
 violation_file <- "./out/violations.csv"
+camera_file   <-  "./out/camera.csv"
 
 # --- NUMERICS ---
 
@@ -31,8 +32,8 @@ names.area    <- c("North", "Center", "South")
 # Names of the nine Chicago regions divided per area
 names.regions <- list(
   North  = c('FarNorth', 'NorthWest', 'North'),
-  Center = c('Central', 'West', 'SouthWest', 'South'),
-  South  = c('FarSouthWest', 'FarSouthEast')
+  Center = c('Central', 'West', 'SouthWest'),
+  South  = c('South', 'FarSouthWest', 'FarSouthEast')
 )
 
 # Name of weekdays for weekly analysis

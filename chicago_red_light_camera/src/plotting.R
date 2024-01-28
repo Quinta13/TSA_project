@@ -61,28 +61,35 @@ plot_ts_grid <- function(ts_list, n_row=1, names, colors, ylab, main) {
 #' @param main Main title for the plot.
 #' @param ylab Label for the y-axis.
 #'
-plot_multiple_ts <- function(ts_list, names, colors, main, ylab, lwd=1) {
+plot_multiple_ts <- function(ts_list, names, colors, main, ylab, lwd=1, lty=NULL) {
+  
+  
+  print(lty)
+  print("Here2")
   
   # Plot the first time series
+  ?plot
+  if(is.null(lty)) {lty_ <- 'solid'} else {lty_ <- lty[1]}
   plot(
     ts_list[[names[1]]],
     xlim=range(do.call(c, lapply(ts_list, time)), na.rm = TRUE),
     ylim=range(unlist(ts_list), na.rm=TRUE),
     type="l", col=colors[[names[1]]],
-    main=main, xlab="Year", ylab=ylab, lwd=lwd
+    main=main, xlab="Year", ylab=ylab, lwd=lwd, lty=lty_ 
   )
   grid()
   
   # Add the remaining time series to the plot
   for(i in 2:length(names)) {
+    if(is.null(lty)) {lty_ <- 'solid'} else (lty_ <- lty[i])
     i_name = names[i]
-    lines(ts_list[[i_name]], type="l", lwd=lwd, col=colors[[i_name]])
+    lines(ts_list[[i_name]], type="l", lwd=lwd, lty=lty_, col=colors[[i_name]])
   }
   
   # Add legend
   legend(
     "topleft", legend=names,
-    lty=1, lwd=2, col=unlist(colors)
+    lty=lty, lwd=2, col=unlist(colors)
   )
 }
   

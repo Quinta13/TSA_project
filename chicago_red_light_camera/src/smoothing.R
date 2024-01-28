@@ -142,6 +142,47 @@ deseasoning <- function(ts, freq) {
   
 }
 
+#' Plot Deseasoning with Varying Window Sizes
+#'
+#' This function overlays deseasoning filter with varying window sizes on the
+#' original time series plot, allowing for visual comparison.
+#'
+#' @param ts Time series object (\code{ts}) representing the original data.
+#' @param freq Numeric vector specifying the window sizes for the deseasoning.
+#' @param freq.color Character vector specifying the colors for each deseasoning.
+#' @param freq.names Character vector specifying legend labels.
+#' @param main Main title for the plot.
+#' @param ylab Label for the y-axis.
+#'
+plot_deseasoning_varying_freq <- function(ts, freq, freq.color, freq.names, main, ylab, lwd=1) {
+  
+  # Plot the original time series
+  plot(
+    ts,
+    main=main,
+    ylab=ylab,
+    col="dimgray"
+  )
+  
+  # Overlay simple moving averages with varying window sizes
+  for (i in seq_along(p)) {
+    lines(
+      deseasoning(ts=ts, freq=p[i]),
+      lty='dashed',
+      col=freq.color[i],
+      lwd=lwd
+    )
+  }
+  
+  # Add legend
+  legend(
+    "topleft", 
+    legend=freq.names,
+    lwd=2, lty=1, col=freq.color
+  )
+  
+}
+
 
 # -- STL ---
 
