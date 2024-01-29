@@ -16,18 +16,15 @@
 #' @param names Character vector of names corresponding to each time series in \code{ts_list}.
 #' @param colors List of colors corresponding to each time series in \code{ts_list}.
 #' @param ylab Label for the y-axis.
-#' @param main Main title for the entire plot.
 #'
 #' @return Returns \code{NULL} as the result is a plot, and it's typically not
 #'         assigned to a variable.
 #'
-plot_ts_grid <- function(ts_list, n_row=1, names, colors, ylab, main) {
+plot_ts_grid <- function(ts_list, n_row=1, names, colors, ylab) {
   
   # Set output parameters
   par(
-    mfrow = c(n_row, ceiling(length(ts_list)/n_row)), 
-    mar   = c(4, 4, 2, 1), 
-    oma   = c(0, 0, 3, 0)
+    mfrow = c(n_row, ceiling(length(ts_list)/n_row))
   )
   
   # Plot each single time series
@@ -43,11 +40,8 @@ plot_ts_grid <- function(ts_list, n_row=1, names, colors, ylab, main) {
     
   }
   
-  # Add a main title for the entire plot
-  mtext(main, line = 0, side = 3, outer = TRUE, cex = 1.5)
-  
   # Reset the plotting parameters
-  par(mfrow = c(1, 1), oma = c(0, 0, 0, 0))
+  par(mfrow = c(1, 1))
   
 }
 
@@ -63,9 +57,6 @@ plot_ts_grid <- function(ts_list, n_row=1, names, colors, ylab, main) {
 #'
 plot_multiple_ts <- function(ts_list, names, colors, main, ylab, lwd=1, lty=NULL) {
   
-  
-  print(lty)
-  print("Here2")
   
   # Plot the first time series
   ?plot
@@ -88,7 +79,7 @@ plot_multiple_ts <- function(ts_list, names, colors, main, ylab, lwd=1, lty=NULL
   
   # Add legend
   legend(
-    "topleft", legend=names,
+    "topleft", legend=names, cex = 0.6,
     lty=lty, lwd=2, col=unlist(colors)
   )
 }

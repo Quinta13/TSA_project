@@ -455,14 +455,12 @@ errors_analysis <- function(pred_ts, error_type, k, h, start_date, freq_type, ma
     time(pred_ts_err)[indices_worst],
     pred_ts_err[indices_worst],
     pch=18,
-    cex=2,
     col="orangered"
   )
   points(
     time(pred_ts_err)[indices_best],
     pred_ts_err[indices_best],
     pch=18,
-    cex=2,
     col="green3"
   )
   

@@ -303,8 +303,8 @@ outliers_diagnostic <- function(ts, colors, main, ylab) {
   new_ <- outliers$replacements
   
   # Draw old vs suggested points
-  points(times, old,  pch=18, col=colors$old, cex=1.5)
-  points(times, new_, pch=18, col=colors$new, cex=1.5)
+  points(times, old,  pch=18, col=colors$old, cex=1)
+  points(times, new_, pch=18, col=colors$new, cex=1)
   
   # Add legend for points
   legend(
