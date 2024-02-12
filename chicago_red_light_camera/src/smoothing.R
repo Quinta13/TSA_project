@@ -127,34 +127,44 @@ plot_ma_decomposition <- function(ts, main) {
 }
 
 
-# --- Deseasoning ---
+# --- Deseasonaling ---
 
-deseasoning <- function(ts, freq) {
+#' Apply Deseasonaling Filter to Time Series
+#'
+#' This function applies a deseasonaling filter to a given time series object.
+#'
+#' @param ts Time series object (\code{ts}) representing the data to be filtered.
+#' @param freq Integer, the frequency of the seasonal pattern in the time series.
+#'
+#' @return Returns a time series object (\code{ts}) representing the result of
+#'         applying the deseasonaling filter to the input time series.
+#'
+deseasonaling <- function(ts, freq) {
   
-  # Define deseasoning filter weights
-  deseasoning.weights <- c(.5, rep(1, freq - 1), .5)
-  deseasoning.weights <- deseasoning.weights / sum(deseasoning.weights)
+  # Define deseasonaling filter weights
+  deseasonaling.weights <- c(.5, rep(1, freq - 1), .5)
+  deseasonaling.weights <- deseasonaling.weights / sum(deseasonaling.weights)
   
-  # Apply the deseasoning filter using the specified weights
-  deseasoning.filter <- apply_filtering(ts=ts, weights=deseasoning.weights)
+  # Apply the deseasonaling filter using the specified weights
+  deseasonaling.filter <- apply_filtering(ts=ts, weights=deseasonaling.weights)
   
-  return(deseasoning.filter)
+  return(deseasonaling.filter)
   
 }
 
-#' Plot Deseasoning with Varying Window Sizes
+#' Plot Deseasonaling with Varying Window Sizes
 #'
-#' This function overlays deseasoning filter with varying window sizes on the
+#' This function overlays deseasonaling filter with varying window sizes on the
 #' original time series plot, allowing for visual comparison.
 #'
 #' @param ts Time series object (\code{ts}) representing the original data.
-#' @param freq Numeric vector specifying the window sizes for the deseasoning.
-#' @param freq.color Character vector specifying the colors for each deseasoning.
+#' @param freq Numeric vector specifying the window sizes for the deseasonaling.
+#' @param freq.color Character vector specifying the colors for each deseasonaling.
 #' @param freq.names Character vector specifying legend labels.
 #' @param main Main title for the plot.
 #' @param ylab Label for the y-axis.
 #'
-plot_deseasoning_varying_freq <- function(ts, freq, freq.color, freq.names, main, ylab, lwd=1) {
+plot_deseasonaling_varying_freq <- function(ts, freq, freq.color, freq.names, main, ylab, lwd=1) {
   
   # Plot the original time series
   plot(
@@ -167,7 +177,7 @@ plot_deseasoning_varying_freq <- function(ts, freq, freq.color, freq.names, main
   # Overlay simple moving averages with varying window sizes
   for (i in seq_along(p)) {
     lines(
-      deseasoning(ts=ts, freq=p[i]),
+      deseasonaling(ts=ts, freq=p[i]),
       lty='dashed',
       col=freq.color[i],
       lwd=lwd
@@ -186,15 +196,15 @@ plot_deseasoning_varying_freq <- function(ts, freq, freq.color, freq.names, main
 
 # -- STL ---
 
-#' Apply Deseasoning Filter to Time Series
+#' Apply Deseasonaling Filter to Time Series
 #'
-#' This function applies a deseasoning filter to a given time series object.
+#' This function applies a deseasonaling filter to a given time series object.
 #'
 #' @param ts Time series object (\code{ts}) representing the data to be filtered.
 #' @param freq Integer, the frequency of the seasonal pattern in the time series.
 #'
 #' @return Returns a time series object (\code{ts}) representing the result of
-#'         applying the deseasoning filter to the input time series.
+#'         applying the deseasonaling filter to the input time series.
 #'
 plot_stl_decomposition <- function(ts, main) {
   
